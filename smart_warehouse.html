@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,40 +7,81 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        :root {
+        :root, [data-theme="light"] {
+            --bg-gradient: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            --text-main: #2b2e33;
+            --text-muted: #6c757d;
+            --sidebar-bg: rgba(255, 255, 255, 0.85);
+            --card-bg: rgba(255, 255, 255, 0.6);
+            --glass-border: rgba(0, 0, 0, 0.08);
+            --primary: #4361ee;
+            --primary-light: #4895ef;
+            --secondary: #3f37c9;
+            --success: #198754;
+            --danger: #dc3545;
+            --warning: #fd7e14;
+            --table-header: #495057;
+            --table-border: rgba(0,0,0,0.05);
+            --table-hover: rgba(0,0,0,0.03);
+            --active-bg: rgba(0, 0, 0, 0.05);
+            --brand-color: #2b2e33;
+        }
+
+        [data-theme="dark"] {
+            --bg-gradient: linear-gradient(135deg, #0f172a, #1e1b4b);
+            --text-main: #f8f9fa;
+            --text-muted: #a0aec0;
+            --sidebar-bg: rgba(15, 23, 42, 0.6);
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
             --primary: #4361ee;
             --primary-light: #4895ef;
             --secondary: #3f37c9;
             --success: #4cc9f0;
             --danger: #f72585;
             --warning: #f8961e;
-            --dark: #1e2022;
-            --dark-light: #2b2e33;
-            --light: #f8f9fa;
-            --gray: #6c757d;
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --table-header: #94a3b8;
+            --table-border: rgba(255,255,255,0.05);
+            --table-hover: rgba(255,255,255,0.02);
+            --active-bg: rgba(255, 255, 255, 0.05);
+            --brand-color: #ffffff;
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+        [data-theme="blue-green"] {
+            --bg-gradient: linear-gradient(135deg, #e0f2f1, #b2dfdb);
+            --text-main: #004d40;
+            --text-muted: #00796b;
+            --sidebar-bg: rgba(224, 242, 241, 0.7);
+            --card-bg: rgba(255, 255, 255, 0.5);
+            --glass-border: rgba(0, 77, 64, 0.15);
+            --primary: #00897b;
+            --primary-light: #26a69a;
+            --secondary: #00695c;
+            --success: #2e7d32;
+            --danger: #c62828;
+            --warning: #ef6c00;
+            --table-header: #004d40;
+            --table-border: rgba(0,77,64,0.1);
+            --table-hover: rgba(0,77,64,0.05);
+            --active-bg: rgba(0, 77, 64, 0.1);
+            --brand-color: #004d40;
         }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', 'Noto Sans KR', sans-serif; }
 
         body {
-            background: linear-gradient(135deg, #0f172a, #1e1b4b);
-            color: var(--light);
+            background: var(--bg-gradient);
+            color: var(--text-main);
             min-height: 100vh;
             display: flex;
             overflow-x: hidden;
+            transition: background 0.5s ease, color 0.5s ease;
         }
 
         /* Sidebar */
         .sidebar {
             width: 260px;
-            background: rgba(15, 23, 42, 0.6);
+            background: var(--sidebar-bg);
             backdrop-filter: blur(15px);
             border-right: 1px solid var(--glass-border);
             display: flex;
@@ -53,7 +94,7 @@
             padding: 0 1.5rem 2rem;
             font-size: 1.2rem;
             font-weight: 700;
-            color: #fff;
+            color: var(--brand-color);
             display: flex;
             align-items: center;
             gap: 10px;
@@ -68,15 +109,15 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            color: #a0aec0;
+            color: var(--text-muted);
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
         }
 
         .nav-item:hover, .nav-item.active {
-            color: #fff;
-            background: var(--glass-bg);
+            color: var(--text-main);
+            background: var(--active-bg);
         }
 
         .nav-item.active::before {
@@ -111,6 +152,18 @@
             box-shadow: 0 4px 15px rgba(67, 97, 238, 0.4);
         }
 
+        .theme-selector {
+            margin: auto 1.5rem 1rem;
+            padding: 0.8rem;
+            background: var(--active-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            color: var(--text-main);
+            font-weight: 600;
+            outline: none;
+            cursor: pointer;
+        }
+
         /* Main Content */
         .main-content {
             flex: 1;
@@ -130,9 +183,7 @@
         .page-title {
             font-size: 1.8rem;
             font-weight: 700;
-            background: linear-gradient(to right, #fff, #a0aec0);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            color: var(--text-main);
         }
 
         /* Dashboard Cards */
@@ -144,7 +195,7 @@
         }
 
         .kpi-card {
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--card-bg);
             border: 1px solid var(--glass-border);
             border-radius: 16px;
             padding: 1.5rem;
@@ -156,26 +207,23 @@
 
         .kpi-card:hover {
             transform: translateY(-5px);
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--active-bg);
         }
 
-        .kpi-title { color: #a0aec0; font-size: 0.9rem; margin-bottom: 0.5rem; }
-        .kpi-value { font-size: 1.8rem; font-weight: 700; color: #fff; }
-        .kpi-icon {
-            float: right;
-            font-size: 2rem;
-            opacity: 0.8;
-        }
+        .kpi-title { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem; font-weight: 600; }
+        .kpi-value { font-size: 1.8rem; font-weight: 700; color: var(--text-main); }
+        .kpi-icon { float: right; font-size: 2rem; opacity: 0.8; }
 
         /* Data Tables */
         .table-container {
-            background: rgba(15, 23, 42, 0.4);
+            background: var(--card-bg);
             border: 1px solid var(--glass-border);
             border-radius: 16px;
             padding: 1.5rem;
             overflow-x: auto;
             animation: fadeIn 0.8s ease;
             display: none;
+            backdrop-filter: blur(10px);
         }
 
         .table-container.active { display: block; }
@@ -183,23 +231,23 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            color: #e2e8f0;
+            color: var(--text-main);
         }
 
         th {
             text-align: left;
             padding: 1rem;
             border-bottom: 2px solid var(--glass-border);
-            color: #94a3b8;
+            color: var(--table-header);
             font-weight: 600;
         }
 
         td {
             padding: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--table-border);
         }
 
-        tr:hover td { background: rgba(255, 255, 255, 0.02); }
+        tr:hover td { background: var(--table-hover); }
 
         .badge {
             padding: 0.3rem 0.8rem;
@@ -208,8 +256,8 @@
             font-weight: 600;
         }
 
-        .badge.normal { background: rgba(76, 201, 240, 0.2); color: #4cc9f0; }
-        .badge.warning { background: rgba(247, 37, 133, 0.2); color: #f72585; }
+        .badge.normal { background: rgba(76, 201, 240, 0.2); color: var(--primary-light); }
+        .badge.warning { background: rgba(247, 37, 133, 0.2); color: var(--danger); }
 
         /* Animations */
         @keyframes fadeInDown { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
@@ -219,8 +267,11 @@
         /* Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.3); }
+        [data-theme="dark"] ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); }
+        [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+
     </style>
 </head>
 <body>
@@ -250,26 +301,48 @@
         <div class="nav-item" data-target="outgoing" onclick="switchTab('outgoing')">
             <i class="fas fa-arrow-up"></i> 출고관리
         </div>
+        
+        <!-- Theme Selector -->
+        <select id="themeSelect" class="theme-selector" onchange="changeTheme(this.value)">
+            <option value="light">☀️ Light Mode</option>
+            <option value="dark">🌙 Dark Mode</option>
+            <option value="blue-green">🍃 Blue-Green Mode</option>
+        </select>
     </aside>
 
     <main class="main-content">
         <div class="header">
             <h1 class="page-title" id="pageTitle">통합 대시보드</h1>
-            <div style="color: #a0aec0; font-size: 0.9rem;">
+            <div style="color: var(--text-muted); font-size: 0.9rem;">
                 <i class="fas fa-clock"></i> <span id="clock"></span>
             </div>
         </div>
 
         <!-- Dashboard View -->
-        <div id="view-dashboard" class="table-container active" style="background: transparent; border: none; padding: 0;">
+        <div id="view-dashboard" class="table-container active" style="background: transparent; border: none; padding: 0; backdrop-filter: none;">
             <div class="kpi-grid" id="kpiContainer">
                 <!-- KPIs injected by JS -->
             </div>
             
             <div class="table-container" style="display: block; margin-top: 2rem;">
-                <h3 style="margin-bottom: 1rem; color: #fff;">최근 알림</h3>
-                <p style="color: #94a3b8;"><i class="fas fa-info-circle"></i> 본 시스템은 전자제조 전용 자재관리 솔루션(단독 실행형)입니다.</p>
-                <p style="color: #94a3b8; margin-top: 0.5rem;"><i class="fas fa-exclamation-triangle"></i> 안전재고 미달 품목 발생 시 즉시 발주 요망.</p>
+                <h3 style="margin-bottom: 1rem; color: var(--text-main);"><i class="fas fa-exclamation-circle" style="color: var(--danger)"></i> 안전재고 부족 품목 리스트</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>부품코드</th><th>부품명</th><th>보관위치</th>
+                            <th>현재고</th><th>안전재고</th><th>부족수량</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shortageTableBody">
+                        <!-- Shortage items injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="table-container" style="display: block; margin-top: 2rem;">
+                <h3 style="margin-bottom: 1rem; color: var(--text-main);">최근 알림</h3>
+                <p style="color: var(--text-muted);"><i class="fas fa-info-circle"></i> 본 시스템은 전자제조 전용 자재관리 솔루션(단독 실행형)입니다.</p>
+                <p style="color: var(--text-muted); margin-top: 0.5rem;"><i class="fas fa-exclamation-triangle"></i> 안전재고 미달 품목 발생 시 즉시 발주 요망.</p>
             </div>
         </div>
 
@@ -374,6 +447,11 @@
                 const titles = { parts: '부품마스터', suppliers: '공급업체관리', inventory: '재고현황', incoming: '입고관리', outgoing: '출고관리' };
                 document.getElementById('pageTitle').innerText = titles[tabId];
             }
+        }
+        
+        // Theme Switcher
+        function changeTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
         }
 
         // Initialize System (Logic translated from GAS)
@@ -490,6 +568,21 @@
                     <div class="kpi-value">${k.val}</div>
                 </div>
             `).join('');
+
+            // 부족재고 리스트 렌더링
+            const shortageItems = appData.inventory.filter(i => i.status === '부족');
+            document.getElementById('shortageTableBody').innerHTML = shortageItems.length > 0
+                ? shortageItems.map(i => `
+                    <tr>
+                        <td>${i.code}</td>
+                        <td>${i.name}</td>
+                        <td>${i.location}</td>
+                        <td style="color: var(--danger); font-weight: bold;">${i.currentQty}</td>
+                        <td>${i.safetyStock}</td>
+                        <td style="color: var(--danger); font-weight: bold;">-${i.safetyStock - i.currentQty}</td>
+                    </tr>
+                `).join('')
+                : '<tr><td colspan="6" style="text-align:center; padding: 2rem; color: var(--success);"><i class="fas fa-check-circle"></i> 현재 안전재고가 부족한 품목이 없습니다.</td></tr>';
         }
 
         function renderTables() {
