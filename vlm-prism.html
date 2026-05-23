@@ -1,0 +1,2303 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLM 동작분석 통합 시스템</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ═══ THEME VARIABLES ═══ */
+:root,[data-theme="dark"]{
+  --bg:#0F172A; --bg2:#1E293B; --bg3:#2D3F55; --border:#334155;
+  --text:#F1F5F9; --text2:#94A3B8; --text3:#64748B;
+  --primary:#3B82F6; --primary-d:#2563EB; --primary-rgb:59,130,246;
+  --green:#10B981; --amber:#F59E0B; --red:#EF4444; --purple:#8B5CF6;
+  --nav-hover:rgba(255,255,255,.055); --nav-active:rgba(59,130,246,.12);
+  --tr-hover:rgba(255,255,255,.025); --waste-row:rgba(239,68,68,.05);
+  --upload-bg:rgba(59,130,246,.025); --upload-hover:rgba(59,130,246,.07);
+  --shadow:0 1px 3px rgba(0,0,0,.35);
+  --kpi-blue:#60A5FA; --kpi-green:#34D399; --kpi-amber:#FBBF24;
+  --eff-good:#34D399; --eff-mid:#FBBF24; --eff-bad:#F87171;
+  --canvas-bg:#0F172A; --canvas-label:#64748B; --canvas-grid:#2D3F55;
+  --chart-bg:#1E293B; --chart-border:#334155; --chart-tick:#94A3B8; --chart-legend:#94A3B8;
+  --chart-pie-border:#1E293B;
+  --bar-label:rgba(255,255,255,.92);
+  --radius:12px;
+}
+
+[data-theme="light"]{
+  --bg:#F1F5F9; --bg2:#FFFFFF; --bg3:#F1F5F9; --border:#E2E8F0;
+  --text:#0F172A; --text2:#475569; --text3:#94A3B8;
+  --primary:#2563EB; --primary-d:#1D4ED8; --primary-rgb:37,99,235;
+  --green:#059669; --amber:#D97706; --red:#DC2626; --purple:#7C3AED;
+  --nav-hover:rgba(0,0,0,.04); --nav-active:rgba(37,99,235,.08);
+  --tr-hover:rgba(0,0,0,.025); --waste-row:rgba(220,38,38,.05);
+  --upload-bg:rgba(37,99,235,.025); --upload-hover:rgba(37,99,235,.06);
+  --shadow:0 1px 4px rgba(0,0,0,.08),0 4px 12px rgba(0,0,0,.04);
+  --kpi-blue:#1D4ED8; --kpi-green:#059669; --kpi-amber:#B45309;
+  --eff-good:#059669; --eff-mid:#B45309; --eff-bad:#DC2626;
+  --canvas-bg:#F8FAFC; --canvas-label:#64748B; --canvas-grid:#E2E8F0;
+  --chart-bg:#FFFFFF; --chart-border:#E2E8F0; --chart-tick:#64748B; --chart-legend:#475569;
+  --chart-pie-border:#FFFFFF;
+  --bar-label:rgba(0,0,0,.85);
+}
+
+[data-theme="bluegreen"]{
+  --bg:#AEB8C4; --bg2:#FFFFFF; --bg3:#F4F7FA; --border:#CBD5E1;
+  --text:#1F2937; --text2:#475569; --text3:#7C8796;
+  --header-bg:#FFFFFF; --header-border:#D7DEE8;
+  --header-text:#1F2937; --header-text3:#7C8796;
+  --sidebar-bg:#4FA1AA; --sidebar-border:#5B6BD6;
+  --sidebar-text:#FFFFFF; --sidebar-text2:rgba(255,255,255,.9);
+  --sidebar-text3:rgba(255,255,255,.66);
+  --sidebar-nav-hover:rgba(255,255,255,.12);
+  --sidebar-nav-active:rgba(255,255,255,.22);
+  --sidebar-primary:#FFFFFF;
+  --primary:#4FA1AA; --primary-d:#3E8C96; --primary-rgb:79,161,170;
+  --green:#48D879; --amber:#B7791F; --red:#DC2626; --purple:#6366F1;
+  --nav-hover:rgba(79,161,170,.1); --nav-active:rgba(79,161,170,.12);
+  --tr-hover:rgba(79,161,170,.045); --waste-row:rgba(220,38,38,.05);
+  --upload-bg:rgba(255,255,255,.58); --upload-hover:rgba(255,255,255,.82);
+  --shadow:0 12px 28px rgba(31,41,55,.12),0 1px 3px rgba(31,41,55,.08);
+  --kpi-blue:#4F6BD8; --kpi-green:#20A876; --kpi-amber:#B7791F;
+  --eff-good:#20A876; --eff-mid:#B7791F; --eff-bad:#DC2626;
+  --canvas-bg:#F4F7FA; --canvas-label:#64748B; --canvas-grid:#D7DEE8;
+  --chart-bg:#FFFFFF; --chart-border:#CBD5E1; --chart-tick:#64748B; --chart-legend:#475569;
+  --chart-pie-border:#FFFFFF;
+  --bar-label:rgba(0,0,0,.82);
+}
+
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Noto Sans KR',-apple-system,sans-serif;font-size:14px;line-height:1.6;transition:background .2s,color .2s}
+
+/* ═══ HEADER ═══ */
+.header{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:62px;background:var(--header-bg,var(--bg2));border-bottom:1px solid var(--header-border,var(--border));position:sticky;top:0;z-index:100;box-shadow:var(--shadow);transition:background .2s,border-color .2s}
+.logo-wrap{display:flex;align-items:center;gap:12px}
+.sidebar-toggle{width:34px;height:34px;border:none;border-radius:8px;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,transform .15s;flex-shrink:0}
+.sidebar-toggle:hover{background:var(--nav-hover)}
+.sidebar-toggle:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.sidebar-toggle img{width:24px;height:24px;display:block;opacity:.8;transition:opacity .15s,transform .2s}
+.sidebar-toggle:hover img{opacity:1}
+body.sidebar-collapsed .sidebar-toggle img{transform:rotate(180deg)}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,var(--primary),#7C3AED);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;transition:background .2s}
+.header-title{font-size:15px;font-weight:800;letter-spacing:-.01em;color:var(--header-text,var(--text))}
+.header-sub{font-size:11px;color:var(--header-text3,var(--text3));margin-top:1px}
+.header-right{display:flex;align-items:center;gap:12px}
+.app-tabs{display:flex;align-items:center;gap:4px;margin-left:18px;padding:3px;background:var(--bg3);border:1px solid var(--border);border-radius:10px}
+.app-tab{border:none;background:transparent;color:var(--text2);padding:7px 13px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:800;cursor:pointer;transition:all .15s;white-space:nowrap}
+.app-tab:hover{background:var(--nav-hover);color:var(--text)}
+.app-tab.active{background:var(--primary);color:#fff;box-shadow:0 1px 4px rgba(var(--primary-rgb),.32)}
+
+/* Theme Switcher */
+.theme-switcher{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:3px;gap:2px}
+.theme-btn{width:30px;height:30px;border:none;border-radius:7px;cursor:pointer;background:transparent;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;color:var(--text3)}
+.theme-btn:hover{background:var(--border)}
+.theme-btn.active{background:var(--bg2);box-shadow:0 1px 4px rgba(0,0,0,.18);color:var(--text)}
+[data-theme="light"] .theme-btn.active{box-shadow:0 1px 3px rgba(0,0,0,.12)}
+
+/* Divider */
+.h-sep{width:1px;height:24px;background:var(--border)}
+
+.role-select{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--bg3);color:var(--text);cursor:pointer;font-family:inherit;transition:all .15s}
+.role-select:focus{outline:none;border-color:var(--primary)}
+.date-text{font-size:11px;color:var(--header-text3,var(--text3));font-family:'JetBrains Mono',monospace;white-space:nowrap}
+
+/* ═══ LAYOUT ═══ */
+.main{display:flex;height:calc(100vh - 62px)}
+
+/* ═══ SIDEBAR ═══ */
+.sidebar{width:216px;background:var(--sidebar-bg,var(--bg2));border-right:1px solid var(--sidebar-border,var(--border));padding:10px 0;flex-shrink:0;display:flex;flex-direction:column;gap:1px;overflow:hidden;transition:width .22s ease,padding .22s ease,border-color .2s,background .2s}
+body.sidebar-collapsed .sidebar{width:0;padding-left:0;padding-right:0;border-right-color:transparent}
+body.sidebar-collapsed .sidebar>*{opacity:0;pointer-events:none}
+.nav-section{padding:14px 18px 5px;font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--sidebar-text3,var(--text3));text-transform:uppercase}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;cursor:pointer;color:var(--sidebar-text2,var(--text2));font-size:13px;font-weight:500;border-left:3px solid transparent;transition:all .15s;user-select:none}
+.nav-item:hover{background:var(--sidebar-nav-hover,var(--nav-hover));color:var(--sidebar-text,var(--text))}
+.nav-item.active{background:var(--sidebar-nav-active,var(--nav-active));color:var(--sidebar-primary,var(--primary));border-left-color:var(--sidebar-primary,var(--primary));font-weight:600}
+.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+
+/* ═══ CONTENT ═══ */
+.content{flex:1;overflow-y:auto;padding:24px;background:var(--bg);transition:background .2s}
+.panel{display:none}.panel.active{display:block}
+
+/* ═══ CARD ═══ */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow);transition:background .2s,border-color .2s}
+.card-title{font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
+
+/* ═══ KPI ═══ */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:16px}
+.kpi-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;box-shadow:var(--shadow);transition:background .2s}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}
+.kpi-card.blue::before{background:linear-gradient(90deg,#2563EB,#60A5FA)}
+.kpi-card.green::before{background:linear-gradient(90deg,#059669,#34D399)}
+.kpi-card.amber::before{background:linear-gradient(90deg,#B45309,#FBBF24)}
+.kpi-card.purple::before{background:linear-gradient(90deg,#6D28D9,#A78BFA)}
+.kpi-label{font-size:10px;color:var(--text3);font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.kpi-value{font-size:30px;font-weight:900;margin:8px 0 4px;font-family:'JetBrains Mono',monospace;line-height:1}
+.kpi-sub{font-size:11px;color:var(--text3)}
+
+/* ═══ UPLOAD ═══ */
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:52px 40px;text-align:center;cursor:pointer;transition:all .2s;background:var(--upload-bg)}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--primary);background:var(--upload-hover)}
+.upload-icon{font-size:46px;margin-bottom:14px}
+.upload-title{font-size:17px;font-weight:800;margin-bottom:6px}
+.upload-sub{font-size:12px;color:var(--text3);margin-bottom:20px}
+
+/* ═══ FORM ═══ */
+.form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-label{font-size:12px;font-weight:700;color:var(--text2)}
+.form-input{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s,background .15s}
+.form-input:focus{border-color:var(--primary);background:var(--bg3)}
+
+/* ═══ BUTTONS ═══ */
+.btn{padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:none;transition:all .15s;font-family:inherit;display:inline-flex;align-items:center;gap:6px;letter-spacing:.01em}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 1px 4px rgba(var(--primary-rgb),.4)}.btn-primary:hover{background:var(--primary-d);box-shadow:0 2px 8px rgba(var(--primary-rgb),.5)}
+.btn-primary:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{background:var(--border)}
+.btn-success{background:var(--green);color:#fff;box-shadow:0 1px 4px rgba(16,185,129,.35)}.btn-success:hover{background:#059669}
+.btn-danger{background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.25)}.btn-danger:hover{background:rgba(239,68,68,.15)}
+.btn-sm{padding:5px 12px;font-size:12px}
+
+/* ═══ PROGRESS ═══ */
+.progress-wrap{margin-top:20px}
+.step-row{display:flex;gap:0;margin-bottom:20px}
+.step-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;position:relative}
+.step-item:not(:last-child)::after{content:'';position:absolute;top:15px;left:50%;width:100%;height:2px;background:var(--border);z-index:0}
+.step-item.done::after{background:var(--primary)}.step-item.act::after{background:linear-gradient(to right,var(--primary),var(--border))}
+.step-circle{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;position:relative;z-index:1;transition:all .3s}
+.step-item.done .step-circle{background:var(--primary);border-color:var(--primary);color:#fff}
+.step-item.act .step-circle{border-color:var(--primary);color:var(--primary);animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(var(--primary-rgb),.45)}50%{box-shadow:0 0 0 8px rgba(var(--primary-rgb),0)}}
+.step-label{font-size:10px;color:var(--text3);text-align:center;line-height:1.35}
+.step-item.done .step-label,.step-item.act .step-label{color:var(--text2)}
+.pbar-wrap{background:var(--bg3);border-radius:100px;height:7px;overflow:hidden;border:1px solid var(--border)}
+.pbar-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--purple));border-radius:100px;transition:width .5s ease}
+.pbar-text{font-size:11px;color:var(--text3);margin-top:7px;font-family:'JetBrains Mono',monospace}
+
+/* ═══ TABLE ═══ */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:9px 12px;text-align:left;font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid var(--border);background:var(--bg);white-space:nowrap;transition:background .2s}
+td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;transition:background .1s}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--tr-hover)}
+tr.waste-row td{background:var(--waste-row)}
+
+/* ═══ BADGES ═══ */
+.code-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700}
+/* Dark theme badge colors */
+.code-M{background:rgba(59,130,246,.18);color:#60A5FA}
+.code-G{background:rgba(16,185,129,.18);color:#34D399}
+.code-P{background:rgba(245,158,11,.18);color:#FBBF24}
+.code-R{background:rgba(139,92,246,.18);color:#A78BFA}
+.code-A{background:rgba(239,68,68,.18);color:#F87171}
+.code-E,.code-F{background:rgba(107,114,128,.18);color:#9CA3AF}
+/* Light + Green theme badge colors */
+[data-theme="light"] .code-M,[data-theme="bluegreen"] .code-M{background:#DBEAFE;color:#1D4ED8}
+[data-theme="light"] .code-G,[data-theme="bluegreen"] .code-G{background:#D1FAE5;color:#065F46}
+[data-theme="light"] .code-P,[data-theme="bluegreen"] .code-P{background:#FEF3C7;color:#92400E}
+[data-theme="light"] .code-R,[data-theme="bluegreen"] .code-R{background:#EDE9FE;color:#5B21B6}
+[data-theme="light"] .code-A,[data-theme="bluegreen"] .code-A{background:#FEE2E2;color:#991B1B}
+[data-theme="light"] .code-E,[data-theme="light"] .code-F,
+[data-theme="bluegreen"] .code-E,[data-theme="bluegreen"] .code-F{background:#F3F4F6;color:#374151}
+
+.waste-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;background:rgba(239,68,68,.16);color:var(--red);font-size:10px;font-weight:800}
+[data-theme="light"] .waste-tag,[data-theme="bluegreen"] .waste-tag{background:#FEE2E2;color:#991B1B}
+
+/* ═══ CHARTS ═══ */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-box{position:relative;height:6cm;transition:height .2s ease}
+.timeline-canvas{width:100%;height:200px;display:block;cursor:crosshair;border-radius:8px}
+
+/* ═══ EDIT INPUTS ═══ */
+.edit-select,.edit-input{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:5px 9px;color:var(--text);font-size:12px;font-family:'JetBrains Mono',monospace;outline:none;transition:border-color .15s}
+.edit-select:focus,.edit-input:focus{border-color:var(--primary)}
+
+/* ═══ INFO ROWS ═══ */
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-key{color:var(--text3);font-size:12px;font-weight:500}
+.info-val{color:var(--text);font-size:12px;font-weight:700}
+
+/* ═══ COMPARISON BAR ═══ */
+.cmp-bar{height:26px;background:var(--bg3);border-radius:100px;overflow:hidden;margin-top:6px;position:relative;border:1px solid var(--border)}
+.cmp-fill{position:absolute;top:0;left:0;height:100%;border-radius:100px;transition:width 1s ease}
+
+/* ═══ LEGEND ═══ */
+.legend{display:flex;gap:14px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.legend-dot{width:11px;height:11px;border-radius:3px;flex-shrink:0}
+
+/* ═══ EFF BAR ═══ */
+.eff-bar{height:8px;background:var(--bg3);border-radius:100px;overflow:hidden;width:100px;display:inline-block;vertical-align:middle;border:1px solid var(--border)}
+.eff-fill{height:100%;border-radius:100px}
+
+/* ═══ EMPTY STATE ═══ */
+.empty-state{text-align:center;padding:80px 20px;color:var(--text3)}
+.empty-icon{font-size:48px;margin-bottom:16px;opacity:.7}
+.empty-title{font-size:16px;font-weight:700;color:var(--text2);margin-bottom:8px}
+
+/* ═══ UTILS ═══ */
+.hidden{display:none!important}
+.pdf-capturing .pdf-export-ignore{display:none!important}
+.flex{display:flex}.items-center{align-items:center}.justify-between{justify-content:space-between}
+.gap-8{gap:8px}.gap-12{gap:12px}.mt-16{margin-top:16px}.mb-8{margin-bottom:8px}
+
+/* ═══ TOOLTIP ═══ */
+.tooltip{position:fixed;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12px;pointer-events:none;z-index:1000;display:none;min-width:168px;box-shadow:0 8px 24px rgba(0,0,0,.2)}
+
+/* ═══ SCROLLBAR ═══ */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:100px}
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeUp .3s ease forwards}
+
+/* ═══ MODAL ═══ */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;overflow-y:auto;backdrop-filter:blur(2px)}
+.modal-box{max-width:740px;margin:40px auto;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:30px;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+
+/* ═══ VIDEO ═══ */
+video{width:100%;border-radius:10px;background:#000;max-height:280px;object-fit:contain;margin-top:14px}
+
+/* ═══ SECTION DIVIDER ═══ */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.section-title{font-size:13px;font-weight:800;color:var(--text)}
+
+/* ═══ MANUAL ═══ */
+.manual-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:16px}
+.manual-title{font-size:22px;font-weight:900;letter-spacing:-.02em}
+.manual-sub{font-size:13px;color:var(--text3);margin-top:4px}
+.manual-tabs{display:flex;gap:8px;flex-wrap:wrap}
+.manual-tab{padding:8px 13px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s}
+.manual-tab:hover{border-color:var(--primary);color:var(--text)}
+.manual-tab.active{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 1px 4px rgba(var(--primary-rgb),.35)}
+.manual-section{display:none}
+.manual-section.active{display:block}
+.manual-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.manual-list{display:grid;gap:10px}
+.manual-step{padding:13px 15px;background:var(--bg3);border:1px solid var(--border);border-radius:8px}
+.manual-step-title{font-size:13px;font-weight:800;margin-bottom:4px;color:var(--text)}
+.manual-step-body{font-size:12px;color:var(--text2);line-height:1.65}
+.manual-note{padding:14px 16px;border-radius:8px;background:rgba(var(--primary-rgb),.08);border:1px solid rgba(var(--primary-rgb),.22);color:var(--text2);font-size:12px;line-height:1.7}
+.logic-flow{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.logic-node{padding:12px 10px;border-radius:8px;background:var(--bg3);border:1px solid var(--border);text-align:center}
+.logic-node strong{display:block;font-size:12px;color:var(--text);margin-bottom:4px}
+.logic-node span{font-size:11px;color:var(--text3);line-height:1.45}
+
+/* ═══ TIME PRISM V2 ═══ */
+.tp-layout{display:grid;grid-template-columns:minmax(360px,1.1fr) minmax(360px,.9fr);gap:16px;align-items:start}
+.tp-video-tools{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.tp-pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.tp-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:100px;background:var(--bg3);border:1px solid var(--border);font-size:11px;font-weight:800;color:var(--text2)}
+.tp-manual{background:#FEE2E2;color:#991B1B}.tp-machine{background:#DCFCE7;color:#166534;border-color:#86EFAC}.tp-walk{background:#E5E7EB;color:#374151}.tp-wait{background:#FEF3C7;color:#92400E}
+[data-theme="dark"] .tp-manual{background:rgba(239,68,68,.18);color:#FCA5A5}
+[data-theme="dark"] .tp-machine{background:rgba(16,185,129,.15);color:#6EE7B7}
+[data-theme="dark"] .tp-walk{background:rgba(148,163,184,.16);color:#CBD5E1}
+[data-theme="dark"] .tp-wait{background:rgba(245,158,11,.18);color:#FCD34D}
+.tp-gantt{display:grid;gap:8px}
+.tp-worker-row{display:grid;grid-template-columns:88px 1fr 78px;gap:10px;align-items:center}
+.tp-worker-label{font-size:11px;font-weight:900;color:var(--text2)}
+.tp-track{height:36px;border:1px solid var(--border);background:var(--bg3);border-radius:8px;position:relative;overflow:hidden}
+.tp-block{position:absolute;top:5px;height:24px;border-radius:6px;border:1px solid rgba(0,0,0,.12);cursor:grab;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:900;color:rgba(0,0,0,.82);font-family:'JetBrains Mono',monospace;min-width:24px;transition:filter .12s,transform .12s}
+.tp-block:hover{filter:saturate(1.1) brightness(1.03);transform:translateY(-1px)}
+.tp-block.cp{outline:2px solid var(--red);outline-offset:1px}
+.tp-takt-line{position:absolute;top:0;bottom:0;width:0;border-left:2px dashed var(--red);opacity:.8}
+.tp-row-total{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3);text-align:right}
+.tp-gauge{height:12px;background:var(--bg3);border:1px solid var(--border);border-radius:100px;overflow:hidden}
+.tp-gauge-fill{height:100%;border-radius:100px;background:linear-gradient(90deg,var(--green),var(--primary));transition:width .4s ease}
+.tp-preview-line{height:2px;background:var(--primary);width:0;transition:width .2s linear;margin-top:8px;border-radius:100px}
+.tp-sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.tp-3d-stage{height:260px;border:1px solid var(--border);border-radius:12px;background:linear-gradient(150deg,var(--bg3),var(--bg2));position:relative;overflow:hidden;perspective:700px}
+.tp-floor{position:absolute;left:34px;right:34px;bottom:38px;height:150px;transform:rotateX(62deg) rotateZ(-18deg);transform-origin:center;background-image:linear-gradient(var(--canvas-grid) 1px,transparent 1px),linear-gradient(90deg,var(--canvas-grid) 1px,transparent 1px);background-size:22px 22px;border:1px solid var(--border);border-radius:10px;opacity:.8}
+.tp-person{position:absolute;left:46%;bottom:92px;width:58px;height:88px;border-radius:18px 18px 10px 10px;background:linear-gradient(180deg,#60A5FA,#2563EB);box-shadow:0 18px 32px rgba(37,99,235,.22)}
+.tp-person::before{content:'';position:absolute;width:30px;height:30px;border-radius:50%;background:#F8C7A2;left:14px;top:-24px}
+.tp-bin,.tp-tool{position:absolute;width:54px;height:42px;border-radius:8px;transform:skewY(-8deg);box-shadow:0 14px 26px rgba(0,0,0,.18)}
+.tp-bin{background:#F59E0B;left:26px;bottom:70px}.tp-tool{background:#10B981;right:34px;bottom:118px}
+.tp-roi-line{position:absolute;height:2px;background:var(--red);transform-origin:left center;left:50%;bottom:125px;width:110px;opacity:.8}
+.tp-scenario{display:grid;gap:12px}
+.tp-slider-row{display:grid;grid-template-columns:130px 1fr 62px;gap:10px;align-items:center;font-size:12px}
+.tp-slider-row input{width:100%}
+.tp-alert{padding:10px 12px;border-radius:8px;border:1px solid rgba(239,68,68,.24);background:rgba(239,68,68,.07);color:var(--red);font-size:12px;font-weight:800}
+.tp-context-menu{position:fixed;display:none;z-index:300;background:var(--bg2);border:1px solid var(--border);border-radius:10px;box-shadow:0 16px 40px rgba(0,0,0,.22);padding:6px;min-width:190px}
+.tp-context-menu button{width:100%;border:none;background:transparent;color:var(--text);font-family:inherit;text-align:left;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:12px}
+.tp-context-menu button:hover{background:var(--nav-hover)}
+
+/* ═══ BLUEGREEN THEME: 이미지 참조 색상 오버라이드 ═══ */
+[data-theme="bluegreen"] .logo-icon{
+  background:#4FA1AA;
+  box-shadow:0 14px 26px rgba(79,161,170,.22);
+}
+[data-theme="bluegreen"] .sidebar{
+  box-shadow:inset -5px 0 0 #5B6BD6;
+}
+[data-theme="bluegreen"] .role-select{
+  background:#F4F7FA;
+  border-color:#CBD5E1;
+  color:#1F2937;
+}
+[data-theme="bluegreen"] .role-select option{background:#FFFFFF;color:#1F2937}
+[data-theme="bluegreen"] .h-sep{background:#CBD5E1}
+[data-theme="bluegreen"] .theme-switcher{
+  background:#F4F7FA;
+  border-color:#CBD5E1;
+}
+[data-theme="bluegreen"] .theme-btn{color:#64748B}
+[data-theme="bluegreen"] .theme-btn:hover{background:#E2E8F0}
+[data-theme="bluegreen"] .theme-btn.active{
+  background:#FFFFFF;
+  color:#1F2937;
+  box-shadow:0 1px 4px rgba(31,41,55,.12);
+}
+[data-theme="bluegreen"] .card,
+[data-theme="bluegreen"] .kpi-card{
+  border-radius:18px;
+}
+[data-theme="bluegreen"] .nav-item.active{
+  border-left-color:#FFFFFF;
+  color:#FFFFFF;
+  background:rgba(255,255,255,.22);
+}
+[data-theme="bluegreen"] .nav-section{
+  border-top:1px solid rgba(255,255,255,.08);
+  margin-top:4px;
+  padding-top:16px;
+}
+[data-theme="bluegreen"] .nav-section:first-child{border-top:none;margin-top:0;padding-top:14px}
+
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.chart-grid,.manual-grid,.tp-layout,.tp-sim-grid{grid-template-columns:1fr}.logic-flow{grid-template-columns:1fr}}
+@media print{.sidebar,.header{display:none!important}.main{height:auto}.content{padding:0}}
+</style>
+</head>
+<body>
+
+<div class="tooltip" id="tooltip"></div>
+<div class="tp-context-menu" id="tpContextMenu">
+  <button onclick="tpMarkStart();tpCloseContext()">현재 프레임을 시작점으로 지정</button>
+  <button onclick="tpMarkEnd();tpCloseContext()">현재 프레임을 종료점으로 지정</button>
+  <button onclick="tpAddSegmentFromMarks();tpCloseContext()">구간 추가</button>
+  <button onclick="tpTogglePlay();tpCloseContext()">재생/일시정지</button>
+</div>
+
+<!-- Modal: MODAPTS Ref -->
+<div class="modal-overlay" id="refModal" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box">
+    <div class="flex justify-between items-center mb-8" style="margin-bottom:16px">
+      <div>
+        <div style="font-size:17px;font-weight:800">MODAPTS 코드 참조표</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:3px">1 MOD = 0.129초 · Normal Pace 기준</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('refModal').style.display='none'">✕ 닫기</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>코드</th><th>유형</th><th>MOD</th><th>시간(s)</th><th>설명</th></tr></thead>
+      <tbody id="refTbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ═══ HEADER ═══ -->
+<header class="header">
+  <div class="logo-wrap">
+    <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()" title="사이드바 접기" aria-label="사이드바 접기" aria-expanded="true">
+      <img alt="" src="data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='9' y='8' width='30' height='32' rx='4' stroke='%23736f68' stroke-width='4'/%3E%3Cpath d='M23.5 10V38' stroke='%23736f68' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+    </button>
+    <div class="logo-icon">🔬</div>
+    <div>
+      <div class="header-title" id="headerTitle">VLM MODAPTS 동작분석 시스템</div>
+      <div class="header-sub" id="headerSub">VLM · OpenCV · Mediapipe 기반 제조 동작 분석</div>
+    </div>
+    <div class="app-tabs" aria-label="분석 모드 탭">
+      <button class="app-tab active" id="appTab-modapts" onclick="switchAppMode('modapts')">MODAPTS</button>
+      <button class="app-tab" id="appTab-timeprism" onclick="switchAppMode('timeprism')">Time Prism</button>
+    </div>
+  </div>
+  <div class="header-right">
+    <!-- Theme Switcher -->
+    <div class="theme-switcher" title="화면 테마 선택">
+      <button class="theme-btn"        id="themeBtn-dark"  onclick="setTheme('dark')"  title="다크 모드">🌙</button>
+      <button class="theme-btn active" id="themeBtn-light" onclick="setTheme('light')" title="라이트 모드">☀️</button>
+      <button class="theme-btn"        id="themeBtn-bluegreen" onclick="setTheme('bluegreen')" title="블루그린 모드">▣</button>
+    </div>
+    <div class="h-sep"></div>
+    <select class="role-select" id="roleSelect" onchange="onRoleChange()">
+      <option value="operator">👷 운영자</option>
+      <option value="engineer">⚙️ 엔지니어</option>
+      <option value="pe">📐 PE/산업공학자</option>
+    </select>
+    <div class="h-sep"></div>
+    <div class="date-text" id="dateDisplay"></div>
+  </div>
+</header>
+
+<div class="main">
+  <!-- ═══ SIDEBAR ═══ -->
+  <nav class="sidebar">
+    <div class="nav-section nav-modapts">분석</div>
+    <div class="nav-item nav-modapts active" id="nav-upload" onclick="showPanel('upload')"><span class="nav-icon">📁</span> 업로드 &amp; 분석</div>
+    <div class="nav-item nav-modapts" id="nav-results" onclick="showPanel('results')"><span class="nav-icon">📊</span> 분석 결과</div>
+    <div class="nav-section nav-modapts">편집 &amp; 출력</div>
+    <div class="nav-item nav-modapts" id="nav-edit" onclick="showPanel('edit')"><span class="nav-icon">✏️</span> MODAPTS 편집</div>
+    <div class="nav-item nav-modapts" id="nav-report" onclick="showPanel('report')"><span class="nav-icon">📋</span> 보고서 &amp; 내보내기</div>
+    <div class="nav-section nav-timeprism hidden">Time Prism V2</div>
+    <div class="nav-item nav-timeprism hidden" id="nav-tp-upload" onclick="showPanel('tp-upload')"><span class="nav-icon">🎬</span> 영상 계측</div>
+    <div class="nav-item nav-timeprism hidden" id="nav-tp-results" onclick="showPanel('tp-results')"><span class="nav-icon">📈</span> Gantt &amp; 표준시간</div>
+    <div class="nav-item nav-timeprism hidden" id="nav-tp-balance" onclick="showPanel('tp-balance')"><span class="nav-icon">⚖️</span> 라인 밸런싱</div>
+    <div class="nav-item nav-timeprism hidden" id="nav-tp-sim" onclick="showPanel('tp-sim')"><span class="nav-icon">🏗️</span> 3D ROI 시뮬레이션</div>
+    <div class="nav-item nav-timeprism hidden" id="nav-tp-report" onclick="showPanel('tp-report')"><span class="nav-icon">📤</span> 표준작업표 출력</div>
+    <div class="nav-section">참고</div>
+    <div class="nav-item" id="nav-manual" onclick="showPanel('manual')"><span class="nav-icon">📘</span> 사용자 매뉴얼</div>
+    <div class="nav-item nav-modapts" id="nav-ref" onclick="showRef()"><span class="nav-icon">📖</span> MODAPTS 코드표</div>
+  </nav>
+
+  <!-- ═══ CONTENT ═══ -->
+  <div class="content">
+
+    <!-- ■ PANEL: Upload ■ -->
+    <div class="panel active" id="panel-upload">
+      <div class="card">
+        <div class="card-title">영상 업로드</div>
+        <div class="upload-zone" id="uploadZone"
+          onclick="document.getElementById('fileInput').click()"
+          ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+          <div class="upload-icon">🎬</div>
+          <div class="upload-title">제조 공정 영상을 업로드하세요</div>
+          <div class="upload-sub">MP4 · AVI · MOV 지원 · 권장 1~30초 · 최대 500MB</div>
+          <button class="btn btn-primary" style="pointer-events:none">파일 선택</button>
+        </div>
+        <input type="file" id="fileInput" class="hidden" accept="video/*" onchange="onFileSelect(event)">
+        <div id="videoWrap" class="hidden">
+          <video id="videoEl" controls></video>
+          <div id="videoMeta" style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">공정 설정</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">공정명</label>
+            <input class="form-input" id="processName" value="PCB 조립 공정" placeholder="공정명">
+          </div>
+          <div class="form-group">
+            <label class="form-label">작업자 ID</label>
+            <input class="form-input" id="workerId" value="W-001" placeholder="작업자 ID">
+          </div>
+          <div class="form-group">
+            <label class="form-label">표준시간 (MOD)</label>
+            <input class="form-input" id="stdMods" type="number" value="80" min="1">
+          </div>
+          <div class="form-group">
+            <label class="form-label">분석 모드</label>
+            <select class="form-input" id="analysisMode">
+              <option value="gpt4v">GPT-4V 시뮬레이션 (표준)</option>
+              <option value="llava">LLaVA-NeXT 정밀 분석</option>
+              <option value="mediapipe">Mediapipe 전용 (빠른)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">샘플링 FPS</label>
+            <select class="form-input" id="samplingFps">
+              <option value="1">1 FPS</option>
+              <option value="2" selected>2 FPS (권장)</option>
+              <option value="6">6 FPS</option>
+              <option value="15">15 FPS (정밀)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">부품 수</label>
+            <select class="form-input" id="partCount">
+              <option>1개</option><option selected>2개</option><option>3개</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">분석 실행</div>
+        <div class="flex items-center gap-12">
+          <button class="btn btn-primary" id="analyzeBtn" onclick="startAnalysis()" disabled style="min-width:152px">▶ 분석 시작</button>
+          <div style="font-size:12px;color:var(--text3)" id="analyzeHint">영상을 먼저 업로드하세요.</div>
+        </div>
+        <div id="progressWrap" class="progress-wrap hidden">
+          <div class="step-row" id="stepRow"></div>
+          <div class="pbar-wrap"><div class="pbar-fill" id="pbarFill" style="width:0%"></div></div>
+          <div class="pbar-text" id="pbarText">준비 중...</div>
+        </div>
+        <div id="doneAlert" class="hidden mt-16"
+          style="padding:14px 18px;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:10px;color:var(--green);font-weight:700">
+          ✅ 분석 완료! 분석 결과 탭에서 결과를 확인하세요.
+        </div>
+      </div>
+    </div>
+
+    <!-- ■ PANEL: Results ■ -->
+    <div class="panel" id="panel-results">
+      <div class="empty-state" id="res-empty">
+        <div class="empty-icon">📊</div>
+        <div class="empty-title">분석 결과가 없습니다</div>
+        <div>영상을 업로드하고 분석을 실행하면 결과가 표시됩니다.</div>
+      </div>
+      <div id="res-content" class="hidden">
+        <div class="kpi-grid" id="kpiGrid"></div>
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">동작 타임라인 (Gantt)</div>
+            <div class="legend" id="timelineLegend"></div>
+          </div>
+          <canvas class="timeline-canvas" id="tlCanvas"></canvas>
+          <div style="font-size:11px;color:var(--text3);margin-top:8px;text-align:center">마우스를 올리면 동작 상세 정보를 볼 수 있습니다</div>
+        </div>
+        <div class="chart-grid">
+          <div class="card"><div class="card-title">코드별 MOD 분포</div><div class="chart-box" id="barChartBox"><canvas id="barChart"></canvas></div></div>
+          <div class="card"><div class="card-title">동작 유형 비율</div><div class="chart-box" id="pieChartBox"><canvas id="pieChart"></canvas></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">⚠️ 낭비 동작 분석</div>
+          <div id="wasteList"></div>
+        </div>
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">동작 상세 목록</div>
+            <span style="font-size:11px;color:var(--text3)" id="motionCount"></span>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>#</th><th>코드</th><th>동작 설명</th><th>MOD</th><th>소요(s)</th><th>시작(s)</th><th>종료(s)</th><th>판정</th></tr></thead>
+            <tbody id="resTbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ■ PANEL: Edit ■ -->
+    <div class="panel" id="panel-edit">
+      <div class="empty-state" id="edit-empty">
+        <div class="empty-icon">✏️</div>
+        <div class="empty-title">편집할 데이터가 없습니다</div>
+        <div>분석 완료 후 이 탭에서 MODAPTS 코드를 수정할 수 있습니다.</div>
+      </div>
+      <div id="edit-content" class="hidden">
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">MODAPTS 코드 편집</div>
+            <div class="flex gap-8">
+              <button class="btn btn-secondary btn-sm" onclick="addEditRow()">+ 행 추가</button>
+              <button class="btn btn-success btn-sm" id="saveBtn" onclick="saveEdits()">💾 저장 및 재계산</button>
+            </div>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>#</th><th>코드</th><th>동작 설명</th><th>MOD</th><th>시간(s)</th><th>작업</th></tr></thead>
+            <tbody id="editTbody"></tbody>
+          </table></div>
+        </div>
+        <div class="card"><div class="card-title">수정 후 합계</div><div id="editSummary"></div></div>
+      </div>
+    </div>
+
+    <!-- ■ PANEL: Report ■ -->
+    <div class="panel" id="panel-report">
+      <div class="empty-state" id="rep-empty">
+        <div class="empty-icon">📋</div>
+        <div class="empty-title">보고서를 생성할 데이터가 없습니다</div>
+        <div>분석 완료 후 이 탭에서 보고서를 확인하고 내보낼 수 있습니다.</div>
+      </div>
+      <div id="rep-content" class="hidden">
+        <div class="flex justify-between items-center" style="margin-bottom:20px">
+          <div>
+            <div style="font-size:20px;font-weight:900;letter-spacing:-.02em">공정 동작 분석 보고서</div>
+            <div style="font-size:13px;color:var(--text3);margin-top:3px" id="repSubtitle"></div>
+          </div>
+          <div class="flex gap-8 pdf-export-ignore">
+            <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ CSV</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportJSON()">⬇ JSON</button>
+            <button class="btn btn-primary btn-sm" id="modaptsPdfBtn" onclick="exportReportPDF('modapts')">⬇ PDF</button>
+          </div>
+        </div>
+        <div class="card"><div class="card-title">공정 정보</div><div id="repInfo"></div></div>
+        <div class="card"><div class="card-title">표준시간 vs 실제시간</div><div id="repTime"></div></div>
+        <div class="card"><div class="card-title">동작 유형별 분석</div><div id="repCat"></div></div>
+        <div class="card">
+          <div class="card-title">전체 동작 목록</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>#</th><th>코드</th><th>동작 설명</th><th>MOD</th><th>시간(s)</th><th>시작(s)</th><th>종료(s)</th><th>판정</th></tr></thead>
+            <tbody id="repTbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ■ PANEL: Time Prism Upload ■ -->
+    <div class="panel" id="panel-tp-upload">
+      <div class="tp-layout">
+        <div class="card">
+          <div class="card-title">Time Prism V2 · 동영상 로드 및 구간 지정</div>
+          <div class="upload-zone" id="tpUploadZone"
+            onclick="document.getElementById('tpFileInput').click()"
+            ondragover="tpDragOver(event)" ondragleave="tpDragLeave(event)" ondrop="tpDrop(event)">
+            <div class="upload-icon">🎞️</div>
+            <div class="upload-title">현장 작업 영상을 Time Prism으로 계측하세요</div>
+            <div class="upload-sub">좌클릭 구간 지정 · 우클릭 컨텍스트 · 마우스 휠 0.1초 미세 이동</div>
+            <button class="btn btn-primary" style="pointer-events:none">영상 선택</button>
+          </div>
+          <input type="file" id="tpFileInput" class="hidden" accept="video/*" onchange="tpFileSelect(event)">
+          <div id="tpVideoWrap" class="hidden">
+            <video id="tpVideoEl" controls onwheel="tpWheelSeek(event)" onclick="tpCaptureMark(event)" oncontextmenu="tpOpenContext(event)"></video>
+            <div id="tpVideoMeta" style="margin-top:8px;font-size:11px;color:var(--text3);font-family:'JetBrains Mono',monospace"></div>
+            <div class="tp-video-tools">
+              <button class="btn btn-secondary btn-sm" onclick="tpMarkStart()">시작점</button>
+              <button class="btn btn-secondary btn-sm" onclick="tpMarkEnd()">종료점</button>
+              <button class="btn btn-secondary btn-sm" onclick="tpAddSegmentFromMarks()">구간 추가</button>
+              <button class="btn btn-secondary btn-sm" onclick="tpPreviewSegments()">Preview</button>
+            </div>
+            <div class="tp-preview-line" id="tpPreviewLine"></div>
+            <div class="tp-pill-row">
+              <span class="tp-pill tp-manual">수작업</span>
+              <span class="tp-pill tp-machine">설비</span>
+              <span class="tp-pill tp-walk">보행</span>
+              <span class="tp-pill tp-wait">대기</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">공정 및 표준시간 설정</div>
+          <div class="form-grid" style="grid-template-columns:1fr 1fr">
+            <div class="form-group">
+              <label class="form-label">라인/공정명</label>
+              <input class="form-input" id="tpProcessName" value="타이어 조립 라인" placeholder="라인/공정명">
+            </div>
+            <div class="form-group">
+              <label class="form-label">목표 택트타임 TT(s)</label>
+              <input class="form-input" id="tpTaktTime" type="number" value="30" min="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">작업자 수</label>
+              <select class="form-input" id="tpWorkerCount">
+                <option value="2">2명</option><option value="3">3명</option><option value="4" selected>4명</option><option value="5">5명</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">작업 강도</label>
+              <select class="form-input" id="tpIntensity" onchange="tpSyncAllowance()">
+                <option value="0.12">경량 작업 12%</option>
+                <option value="0.18" selected>중량 작업 18%</option>
+                <option value="0.25">과중 작업 25%</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">PDF 여유율(%)</label>
+              <input class="form-input" id="tpAllowance" type="number" value="18" min="0" max="35" step="1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">분석 기준</label>
+              <select class="form-input" id="tpStandardBasis">
+                <option value="modapts" selected>MODAPTS 이론 NT</option>
+                <option value="rating">실측 평균 × 레이팅</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-16">
+            <button class="btn btn-primary" id="tpAnalyzeBtn" onclick="tpStartAnalysis()" disabled>▶ Time Prism 분석 실행</button>
+            <span style="font-size:12px;color:var(--text3);margin-left:10px" id="tpAnalyzeHint">영상을 먼저 업로드하세요.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-header">
+          <div class="section-title">계측 구간 목록</div>
+          <button class="btn btn-secondary btn-sm" onclick="tpSeedSegments()">샘플 구간 불러오기</button>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>#</th><th>시작</th><th>종료</th><th>분류</th><th>Level 1</th><th>Level 2 / MODAPTS</th><th>작업자</th><th>작업</th></tr></thead>
+          <tbody id="tpSegmentTbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ■ PANEL: Time Prism Results ■ -->
+    <div class="panel" id="panel-tp-results">
+      <div class="empty-state" id="tpResEmpty">
+        <div class="empty-icon">📈</div>
+        <div class="empty-title">Time Prism 분석 결과가 없습니다</div>
+        <div>영상 계측 탭에서 구간을 만들고 분석을 실행하세요.</div>
+      </div>
+      <div id="tpResContent" class="hidden">
+        <div class="kpi-grid" id="tpKpiGrid"></div>
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">작업자별 Gantt Chart · Current Time Line 동기화</div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-dot" style="background:#EF4444"></span>수작업</span>
+              <span class="legend-item"><span class="legend-dot" style="background:#10B981"></span>설비</span>
+              <span class="legend-item"><span class="legend-dot" style="background:#9CA3AF"></span>보행</span>
+              <span class="legend-item"><span class="legend-dot" style="background:#F59E0B"></span>대기</span>
+            </div>
+          </div>
+          <div class="tp-gantt" id="tpGantt"></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:8px">블록을 다른 작업자 행으로 드래그하면 라인 밸런싱과 여유시간이 즉시 재계산됩니다.</div>
+        </div>
+        <div class="chart-grid">
+          <div class="card">
+            <div class="card-title">ST 산출 · PDF 여유율</div>
+            <div id="tpStdCalc"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">실측 vs MODAPTS 이론 Gap</div>
+            <div id="tpGapList"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Time Prism 구간 상세</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>#</th><th>분류</th><th>Level 1</th><th>MODAPTS</th><th>실측(s)</th><th>NT(s)</th><th>ST(s)</th><th>Gap</th><th>작업자</th></tr></thead>
+            <tbody id="tpResultTbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ■ PANEL: Time Prism Balance ■ -->
+    <div class="panel" id="panel-tp-balance">
+      <div class="empty-state" id="tpBalEmpty">
+        <div class="empty-icon">⚖️</div>
+        <div class="empty-title">라인 밸런싱 데이터가 없습니다</div>
+        <div>Time Prism 분석을 실행하면 TF·FF·DF와 편성효율이 표시됩니다.</div>
+      </div>
+      <div id="tpBalContent" class="hidden">
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">편성효율 목표 85% 게이지</div>
+            <button class="btn btn-primary btn-sm" onclick="tpAutoBalance()">자동 재편성</button>
+          </div>
+          <div class="tp-gauge"><div class="tp-gauge-fill" id="tpEffGauge"></div></div>
+          <div id="tpBalanceSummary" style="margin-top:12px"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Forward/Backward Pass 여유시간 계산</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>#</th><th>작업</th><th>EST</th><th>EFT</th><th>LST</th><th>LFT</th><th>TF</th><th>FF</th><th>DF</th><th>상태</th></tr></thead>
+            <tbody id="tpFloatTbody"></tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="card-title">작업자 부하</div>
+          <div id="tpWorkerLoad"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ■ PANEL: Time Prism Simulation ■ -->
+    <div class="panel" id="panel-tp-sim">
+      <div class="tp-sim-grid">
+        <div class="card">
+          <div class="card-title">3D 레이아웃 ROI 시뮬레이션</div>
+          <div class="tp-3d-stage">
+            <div class="tp-floor"></div>
+            <div class="tp-person" title="작업자"></div>
+            <div class="tp-bin" id="tpBin" title="부품통"></div>
+            <div class="tp-tool" id="tpTool" title="설비/공구"></div>
+            <div class="tp-roi-line" id="tpRoiLine"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">거리 기반 MODAPTS 코드 변화</div>
+          <div class="tp-scenario">
+            <div class="tp-slider-row"><label>부품통 거리</label><input id="tpBinDistance" type="range" min="5" max="70" value="45" oninput="tpRenderSimulation()"><span id="tpBinDistanceVal"></span></div>
+            <div class="tp-slider-row"><label>개선 후 거리</label><input id="tpNewDistance" type="range" min="5" max="70" value="25" oninput="tpRenderSimulation()"><span id="tpNewDistanceVal"></span></div>
+            <div class="tp-slider-row"><label>일 생산량</label><input id="tpDailyQty" type="range" min="100" max="5000" value="1200" step="100" oninput="tpRenderSimulation()"><span id="tpDailyQtyVal"></span></div>
+            <div id="tpSimResult"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ■ PANEL: Time Prism Report ■ -->
+    <div class="panel" id="panel-tp-report">
+      <div class="empty-state" id="tpReportEmpty">
+        <div class="empty-icon">📤</div>
+        <div class="empty-title">내보낼 Time Prism 결과가 없습니다</div>
+        <div>분석을 실행한 뒤 표준작업조합표를 다운로드하세요.</div>
+      </div>
+      <div id="tpReportContent" class="hidden">
+        <div class="flex justify-between items-center" style="margin-bottom:20px">
+          <div>
+            <div style="font-size:20px;font-weight:900;letter-spacing:-.02em">Time Prism 표준작업조합표</div>
+            <div style="font-size:13px;color:var(--text3);margin-top:3px" id="tpReportSubtitle"></div>
+          </div>
+          <div class="flex gap-8 pdf-export-ignore">
+            <button class="btn btn-secondary btn-sm" onclick="tpExportCSV()">⬇ CSV</button>
+            <button class="btn btn-secondary btn-sm" onclick="tpExportJSON()">⬇ JSON</button>
+            <button class="btn btn-primary btn-sm" id="timePrismPdfBtn" onclick="exportReportPDF('timeprism')">⬇ PDF</button>
+          </div>
+        </div>
+        <div class="card"><div class="card-title">SCM 연동 요약</div><div id="tpScmSummary"></div></div>
+        <div class="card">
+          <div class="card-title">표준작업조합표</div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>#</th><th>C 시작</th><th>D 소요</th><th>E 분류</th><th>F 작업</th><th>G 누적</th><th>H TT</th><th>아이콘</th></tr></thead>
+            <tbody id="tpReportTbody"></tbody>
+          </table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ■ PANEL: Manual ■ -->
+    <div class="panel" id="panel-manual">
+      <div class="manual-hero">
+        <div>
+          <div class="manual-title" id="manualTitle">사용자 매뉴얼</div>
+          <div class="manual-sub" id="manualSub">앱 조작 절차와 VLM·MODAPTS 기반 동작분석 산출 방식을 확인합니다.</div>
+        </div>
+        <div class="manual-tabs">
+          <button class="manual-tab active" id="manualTab-app" onclick="showManualSection('app')">앱 사용법</button>
+          <button class="manual-tab" id="manualTab-logic" onclick="showManualSection('logic')">VLM·MODAPTS 개요</button>
+        </div>
+      </div>
+
+      <div class="manual-section active" id="manual-app">
+        <div class="manual-grid">
+          <div class="card">
+            <div class="card-title">기본 사용 흐름</div>
+            <div class="manual-list">
+              <div class="manual-step">
+                <div class="manual-step-title">1. 영상 업로드</div>
+                <div class="manual-step-body">업로드 &amp; 분석 탭에서 제조 공정 영상을 선택합니다. 영상이 로드되면 해상도, 길이, 예상 분석 프레임 수가 표시됩니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">2. 공정 조건 입력</div>
+                <div class="manual-step-body">공정명, 작업자 ID, 표준시간, 분석 모드, 샘플링 FPS, 부품 수를 입력합니다. 표준시간은 분석 효율 계산의 기준이 됩니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">3. 분석 실행</div>
+                <div class="manual-step-body">분석 시작 버튼을 누르면 프레임 추출, 손/부품 추적, VLM 분석, MODAPTS 코드 생성, 결과 계산 순서로 진행됩니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">4. 결과 확인</div>
+                <div class="manual-step-body">분석 결과 탭에서 KPI, 타임라인, 코드별 분포, 동작 유형 비율, 낭비 동작, 상세 동작 목록을 확인합니다.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">편집 및 출력</div>
+            <div class="manual-list">
+              <div class="manual-step">
+                <div class="manual-step-title">MODAPTS 코드 편집</div>
+                <div class="manual-step-body">상단 역할을 엔지니어 또는 PE/산업공학자로 변경한 뒤 MODAPTS 편집 탭을 엽니다. 분석으로 생성된 각 동작 행에서 코드 드롭다운을 선택하면 MOD 수와 예상 시간이 즉시 갱신됩니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">편집 행 조작</div>
+                <div class="manual-step-body">동작 설명 입력칸에서 작업 내용을 보정할 수 있습니다. 누락된 동작은 행 추가 버튼으로 새 행을 만들고, 불필요한 동작은 삭제 버튼으로 제거합니다. 하단 수정 후 합계에서 총 동작 수, 총 MOD, 예상 시간, 수정 후 효율을 확인합니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">저장 및 재계산</div>
+                <div class="manual-step-body">저장 및 재계산을 누르면 현재 편집 테이블 순서대로 시작·종료 시간이 다시 배정되고, 수정된 코드 기준으로 MOD 합계, 예상 시간, 효율, 타임라인, 보고서가 갱신됩니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">보고서 내보내기</div>
+                <div class="manual-step-body">보고서 &amp; 내보내기 탭에서 CSV, JSON으로 결과를 저장하거나 화면에 보이는 보고서를 PDF로 다운로드합니다.</div>
+              </div>
+              <div class="manual-note">운영자 역할에서는 편집 메뉴가 비활성화됩니다. 분석 검토와 결과 출력은 가능하지만 코드 보정은 엔지니어/PE 역할에서 수행하도록 설계되어 있습니다.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="manual-section" id="manual-logic">
+        <div class="card">
+          <div class="card-title">동작분석 산출 흐름</div>
+          <div class="logic-flow">
+            <div class="logic-node"><strong>영상 입력</strong><span>작업 영상 업로드 및 기본 메타데이터 확인</span></div>
+            <div class="logic-node"><strong>프레임 샘플링</strong><span>설정 FPS 기준으로 분석 대상 프레임 추출</span></div>
+            <div class="logic-node"><strong>동작 인식</strong><span>손, 부품, 공구의 이동과 상호작용 추정</span></div>
+            <div class="logic-node"><strong>코드 매핑</strong><span>동작을 M, G, P 등 MODAPTS 코드로 변환</span></div>
+            <div class="logic-node"><strong>시간 산출</strong><span>MOD 수와 0.129초 계수로 표준 시간 계산</span></div>
+          </div>
+        </div>
+
+        <div class="manual-grid">
+          <div class="card">
+            <div class="card-title">VLM 개요</div>
+            <div class="manual-list">
+              <div class="manual-step">
+                <div class="manual-step-title">VLM의 역할</div>
+                <div class="manual-step-body">VLM은 영상 프레임의 시각 정보를 해석해 작업자의 손 이동, 부품 접근, 쥐기, 놓기, 정렬 같은 의미 단위 동작을 추정합니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">보조 추적 정보</div>
+                <div class="manual-step-body">OpenCV와 Mediapipe 기반의 손 위치, 이동 방향, 거리 변화 같은 신호를 함께 사용해 동작 구간과 후보 동작을 안정화합니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">시뮬레이션 모드</div>
+                <div class="manual-step-body">현재 웹앱은 실제 서버 분석 대신 브라우저에서 샘플 동작 패턴을 생성해 VLM 분석 결과처럼 시각화하는 데모 구조입니다.</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">MODAPTS 산출 방식</div>
+            <div class="manual-list">
+              <div class="manual-step">
+                <div class="manual-step-title">코드 체계</div>
+                <div class="manual-step-body">M은 이동, G는 쥐기, P는 놓기, R은 재파지, A는 압력, E는 시선, F는 손가락 동작을 나타냅니다. 각 코드는 고유 MOD 값을 가집니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">시간 계산</div>
+                <div class="manual-step-body">각 동작 시간은 MOD 수 × 0.129초로 계산합니다. 예를 들어 M3는 3 MOD이므로 0.387초로 산출됩니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">효율 계산</div>
+                <div class="manual-step-body">표준시간은 입력된 표준 MOD × 0.129초이며, 효율은 표준시간을 분석 총시간으로 나누어 백분율로 표시합니다.</div>
+              </div>
+              <div class="manual-step">
+                <div class="manual-step-title">낭비 동작 판정</div>
+                <div class="manual-step-body">MOD 값이 큰 동작, 복잡 파지(G3), 압력 동작(A14) 등은 개선 검토 대상으로 표시되어 레이아웃, 지그, 공구 개선 힌트를 제공합니다.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════
+// MODAPTS
+// ═══════════════════════════════════════
+const MOD_S = 0.129;
+const MODAPTS = {
+  M1:{mods:1,desc:'이동 2.5cm 이내',cat:'M',color:'#93C5FD'},
+  M2:{mods:2,desc:'이동 5cm 이내',cat:'M',color:'#60A5FA'},
+  M3:{mods:3,desc:'이동 15cm 이내',cat:'M',color:'#3B82F6'},
+  M4:{mods:4,desc:'이동 30cm 이내',cat:'M',color:'#2563EB'},
+  M5:{mods:5,desc:'이동 45cm 이내',cat:'M',color:'#1D4ED8'},
+  M6:{mods:6,desc:'이동 60cm 이상',cat:'M',color:'#1E40AF'},
+  G0:{mods:0,desc:'단순 접촉 (위치 불필요)',cat:'G',color:'#6EE7B7'},
+  G1:{mods:1,desc:'단순 쥐기',cat:'G',color:'#10B981'},
+  G3:{mods:3,desc:'복잡한 쥐기 (재파지)',cat:'G',color:'#059669'},
+  P0:{mods:0,desc:'단순 놓기 (위치 불필요)',cat:'P',color:'#FDE68A'},
+  P2:{mods:2,desc:'일반 놓기 (느슨한 맞춤)',cat:'P',color:'#F59E0B'},
+  P5:{mods:5,desc:'정밀 놓기 (정렬 필요)',cat:'P',color:'#D97706'},
+  R2:{mods:2,desc:'재파지 (방향 전환)',cat:'R',color:'#A78BFA'},
+  A14:{mods:14,desc:'압력 가하기',cat:'A',color:'#F87171'},
+  E2:{mods:2,desc:'눈 동작 (시선 이동)',cat:'E',color:'#9CA3AF'},
+  F1:{mods:1,desc:'손가락 단독 동작',cat:'F',color:'#D1D5DB'},
+};
+const CAT_COLOR={M:'#3B82F6',G:'#10B981',P:'#F59E0B',R:'#8B5CF6',A:'#EF4444',E:'#6B7280',F:'#9CA3AF'};
+const CAT_LABEL={M:'이동(M)',G:'쥐기(G)',P:'놓기(P)',R:'재파지(R)',A:'압력(A)',E:'눈(E)',F:'손가락(F)'};
+const WASTE_TIP={
+  M5:'45cm 이상 이동 반복 → 작업 배치 개선으로 이동 거리를 단축하세요.',
+  M6:'60cm 이상 이동 → 작업장 레이아웃 재구성을 권장합니다.',
+  G3:'복잡한 쥐기 반복 → 부품 트레이·지그 도입을 검토하세요.',
+  P5:'정밀 놓기 빈번 → 가이드 핀·지그 사용으로 P2 수준으로 낮출 수 있습니다.',
+  A14:'압력 가하기 발생 → 전용 압입 공구 사용을 검토하세요.',
+};
+
+const TP_TYPES={
+  manual:{label:'수작업',color:'#EF4444',cls:'tp-manual'},
+  machine:{label:'설비',color:'#10B981',cls:'tp-machine'},
+  walk:{label:'보행',color:'#9CA3AF',cls:'tp-walk'},
+  wait:{label:'대기',color:'#F59E0B',cls:'tp-wait'},
+};
+const TP_LEVELS={
+  reach:{label:'손뻗기/이동',codes:['M1','M2','M3','M4','M5','M6']},
+  grasp:{label:'잡기/파지',codes:['G0','G1','G3']},
+  place:{label:'놓기/정렬',codes:['P0','P2','P5']},
+  adjust:{label:'방향조정/재파지',codes:['R2','F1']},
+  inspect:{label:'확인/검사',codes:['E2']},
+  press:{label:'압입/체결',codes:['A14']},
+  wait:{label:'대기/간섭',codes:['E2']},
+};
+const TP_SAMPLE_SEGMENTS=[
+  {type:'manual',level:'reach',code:'M5',desc:'원거리 부품통 접근',observed:5.4,worker:1},
+  {type:'manual',level:'grasp',code:'G3',desc:'타이어 부품 복잡 파지',observed:4.1,worker:1},
+  {type:'walk',level:'reach',code:'M6',desc:'설비 사이 보행 이동',observed:7.6,worker:1},
+  {type:'manual',level:'place',code:'P5',desc:'휠 위치 정밀 안착',observed:8.2,worker:1},
+  {type:'machine',level:'press',code:'A14',desc:'압입 장비 가동',observed:18.5,worker:2},
+  {type:'manual',level:'adjust',code:'R2',desc:'방향 조정',observed:5.8,worker:2},
+  {type:'wait',level:'wait',code:'E2',desc:'설비 완료 대기',observed:7.0,worker:2},
+  {type:'manual',level:'reach',code:'M4',desc:'공구 집기',observed:6.7,worker:3},
+  {type:'manual',level:'press',code:'A14',desc:'클립 체결',observed:10.4,worker:3},
+  {type:'manual',level:'inspect',code:'E2',desc:'육안 검사',observed:5.3,worker:3},
+  {type:'manual',level:'place',code:'P2',desc:'완성품 배출 위치 이동',observed:9.8,worker:4},
+  {type:'walk',level:'reach',code:'M5',desc:'팔레트 이동',observed:8.4,worker:4},
+  {type:'wait',level:'wait',code:'E2',desc:'후속 공정 대기',observed:4.8,worker:4},
+];
+
+// ═══════════════════════════════════════
+// State
+// ═══════════════════════════════════════
+let data = null;
+let currentAppMode = 'modapts';
+let barCh = null, pieCh = null;
+let currentTheme = 'light';
+let tpState = {
+  segments: [],
+  data: null,
+  markStart: null,
+  markEnd: null,
+  previewTimer: null,
+  videoFileName: '',
+};
+
+// ═══════════════════════════════════════
+// Theme
+// ═══════════════════════════════════════
+function setTheme(t){
+  currentTheme = t;
+  document.documentElement.setAttribute('data-theme', t);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('themeBtn-'+t).classList.add('active');
+  // Re-render charts if data exists
+  if(data){
+    renderTimeline(data.events, data.totalTime);
+    renderCharts(data.events, data.totalMods);
+  }
+  if(tpState.data) tpRenderAll();
+}
+
+// Theme-aware colors for JS use
+function getTC(){
+  const t = currentTheme;
+  const isDark = t === 'dark';
+  return {
+    kpiBlue:   isDark ? '#60A5FA' : t==='bluegreen' ? '#4F6BD8' : '#1D4ED8',
+    kpiGreen:  isDark ? '#34D399' : t==='bluegreen' ? '#20A876' : '#059669',
+    kpiAmber:  isDark ? '#FBBF24' : '#B45309',
+    effGood:   isDark ? '#34D399' : t==='bluegreen' ? '#20A876' : '#059669',
+    effMid:    isDark ? '#FBBF24' : '#B45309',
+    effBad:    isDark ? '#F87171' : '#DC2626',
+    canvasBg:  isDark ? '#0F172A' : t==='bluegreen' ? '#F4F7FA' : '#F9FAFB',
+    rowBg:     isDark ? 'rgba(255,255,255,.02)' : 'rgba(0,0,0,.018)',
+    labelCol:  isDark ? '#64748B' : t==='bluegreen' ? '#64748B' : '#6B7280',
+    gridCol:   isDark ? '#2D3F55' : t==='bluegreen' ? '#D7DEE8' : '#E5E7EB',
+    barLabel:  isDark ? 'rgba(255,255,255,.92)' : 'rgba(0,0,0,.82)',
+    chartBg:   isDark ? '#1E293B' : '#FFFFFF',
+    chartBdr:  isDark ? '#334155' : t==='bluegreen' ? '#CBD5E1' : '#E5E7EB',
+    chartTick: isDark ? '#94A3B8' : '#6B7280',
+    chartLeg:  isDark ? '#94A3B8' : t==='bluegreen' ? '#475569' : '#475569',
+    pieBdr:    isDark ? '#1E293B' : '#FFFFFF',
+  };
+}
+
+// ═══════════════════════════════════════
+// Init
+// ═══════════════════════════════════════
+(function init(){
+  document.getElementById('dateDisplay').textContent =
+    new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'2-digit',day:'2-digit'}) + ' ' +
+    new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  buildRefTable();
+  renderManualContent();
+  tpSeedSegments(true);
+  tpRenderSimulation();
+  onRoleChange();
+})();
+
+function buildRefTable(){
+  const tb = document.getElementById('refTbody');
+  for(const [code,d] of Object.entries(MODAPTS)){
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><span class="code-badge code-${d.cat}">${code}</span></td>
+      <td>${CAT_LABEL[d.cat]||d.cat}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${d.mods}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${(d.mods*MOD_S).toFixed(3)}</td>
+      <td style="color:var(--text3)">${d.desc}</td>`;
+    tb.appendChild(tr);
+  }
+}
+
+// ═══════════════════════════════════════
+// Navigation
+// ═══════════════════════════════════════
+function showPanel(name){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='tp-results' && tpState.data) requestAnimationFrame(tpRenderGantt);
+}
+function showRef(){ document.getElementById('refModal').style.display='block'; }
+
+function switchAppMode(mode){
+  currentAppMode = mode;
+  renderManualContent();
+  document.querySelectorAll('.app-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('appTab-'+mode).classList.add('active');
+  document.querySelectorAll('.nav-modapts').forEach(el=>el.classList.toggle('hidden', mode!=='modapts'));
+  document.querySelectorAll('.nav-timeprism').forEach(el=>el.classList.toggle('hidden', mode!=='timeprism'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(mode==='timeprism'){
+    document.getElementById('headerTitle').textContent='VLM Time Prism 제조 최적화 시스템';
+    document.getElementById('headerSub').textContent='영상 계측 · 표준시간 · 라인 밸런싱 · 3D ROI 시뮬레이션';
+    document.getElementById('panel-tp-upload').classList.add('active');
+    document.getElementById('nav-tp-upload').classList.add('active');
+  } else {
+    document.getElementById('headerTitle').textContent='VLM MODAPTS 동작분석 시스템';
+    document.getElementById('headerSub').textContent='VLM · OpenCV · Mediapipe 기반 제조 동작 분석';
+    document.getElementById('panel-upload').classList.add('active');
+    document.getElementById('nav-upload').classList.add('active');
+  }
+  onRoleChange();
+}
+
+function toggleSidebar(){
+  const collapsed = document.body.classList.toggle('sidebar-collapsed');
+  const btn = document.getElementById('sidebarToggle');
+  const label = collapsed ? '사이드바 열기' : '사이드바 접기';
+  btn.title = label;
+  btn.setAttribute('aria-label', label);
+  btn.setAttribute('aria-expanded', String(!collapsed));
+}
+
+function showManualSection(name){
+  document.querySelectorAll('.manual-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.manual-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('manual-'+name).classList.add('active');
+  document.getElementById('manualTab-'+name).classList.add('active');
+}
+
+function renderManualContent(){
+  const isTp = currentAppMode === 'timeprism';
+  document.getElementById('manualTitle').textContent = isTp ? 'Time Prism 사용자 매뉴얼' : '사용자 매뉴얼';
+  document.getElementById('manualSub').textContent = isTp
+    ? 'Time Prism V2의 영상 계측, 표준시간 산출, 라인 밸런싱, 3D ROI 시뮬레이션 흐름을 확인합니다.'
+    : '앱 조작 절차와 VLM·MODAPTS 기반 동작분석 산출 방식을 확인합니다.';
+  document.getElementById('manualTab-app').textContent = isTp ? 'Time Prism 앱 사용법' : '앱 사용법';
+  document.getElementById('manualTab-logic').textContent = isTp ? 'Time Prism 개요 및 산출로직' : 'VLM·MODAPTS 개요';
+  document.getElementById('manual-app').innerHTML = isTp ? tpManualAppHtml() : modaptsManualAppHtml();
+  document.getElementById('manual-logic').innerHTML = isTp ? tpManualLogicHtml() : modaptsManualLogicHtml();
+}
+
+function modaptsManualAppHtml(){
+  return `<div class="manual-grid">
+    <div class="card">
+      <div class="card-title">기본 사용 흐름</div>
+      <div class="manual-list">
+        <div class="manual-step"><div class="manual-step-title">1. 영상 업로드</div><div class="manual-step-body">업로드 &amp; 분석 탭에서 제조 공정 영상을 선택합니다. 영상이 로드되면 해상도, 길이, 예상 분석 프레임 수가 표시됩니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">2. 공정 조건 입력</div><div class="manual-step-body">공정명, 작업자 ID, 표준시간, 분석 모드, 샘플링 FPS, 부품 수를 입력합니다. 표준시간은 분석 효율 계산의 기준이 됩니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">3. 분석 실행</div><div class="manual-step-body">분석 시작 버튼을 누르면 프레임 추출, 손/부품 추적, VLM 분석, MODAPTS 코드 생성, 결과 계산 순서로 진행됩니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">4. 결과 확인</div><div class="manual-step-body">분석 결과 탭에서 KPI, 타임라인, 코드별 분포, 동작 유형 비율, 낭비 동작, 상세 동작 목록을 확인합니다.</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">편집 및 출력</div>
+      <div class="manual-list">
+        <div class="manual-step"><div class="manual-step-title">MODAPTS 코드 편집</div><div class="manual-step-body">상단 역할을 엔지니어 또는 PE/산업공학자로 변경한 뒤 MODAPTS 편집 탭을 엽니다. 각 동작 행에서 코드 드롭다운을 선택하면 MOD 수와 예상 시간이 즉시 갱신됩니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">저장 및 재계산</div><div class="manual-step-body">저장 및 재계산을 누르면 현재 편집 테이블 순서대로 시작·종료 시간이 다시 배정되고, 수정된 코드 기준으로 전체 결과가 갱신됩니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">보고서 내보내기</div><div class="manual-step-body">보고서 &amp; 내보내기 탭에서 CSV, JSON으로 결과를 저장하거나 화면에 보이는 보고서를 PDF로 다운로드합니다.</div></div>
+        <div class="manual-note">운영자 역할에서는 편집 메뉴가 비활성화됩니다. 코드 보정은 엔지니어/PE 역할에서 수행하도록 설계되어 있습니다.</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function modaptsManualLogicHtml(){
+  return `<div class="card">
+    <div class="card-title">동작분석 산출 흐름</div>
+    <div class="logic-flow">
+      <div class="logic-node"><strong>영상 입력</strong><span>작업 영상 업로드 및 기본 메타데이터 확인</span></div>
+      <div class="logic-node"><strong>프레임 샘플링</strong><span>설정 FPS 기준으로 분석 대상 프레임 추출</span></div>
+      <div class="logic-node"><strong>동작 인식</strong><span>손, 부품, 공구의 이동과 상호작용 추정</span></div>
+      <div class="logic-node"><strong>코드 매핑</strong><span>동작을 M, G, P 등 MODAPTS 코드로 변환</span></div>
+      <div class="logic-node"><strong>시간 산출</strong><span>MOD 수와 0.129초 계수로 표준 시간 계산</span></div>
+    </div>
+  </div>
+  <div class="manual-grid">
+    <div class="card"><div class="card-title">VLM 개요</div><div class="manual-list">
+      <div class="manual-step"><div class="manual-step-title">VLM의 역할</div><div class="manual-step-body">VLM은 영상 프레임의 시각 정보를 해석해 작업자의 손 이동, 부품 접근, 쥐기, 놓기, 정렬 같은 의미 단위 동작을 추정합니다.</div></div>
+      <div class="manual-step"><div class="manual-step-title">보조 추적 정보</div><div class="manual-step-body">OpenCV와 Mediapipe 기반의 손 위치, 이동 방향, 거리 변화 같은 신호를 함께 사용해 동작 구간과 후보 동작을 안정화합니다.</div></div>
+    </div></div>
+    <div class="card"><div class="card-title">MODAPTS 산출 방식</div><div class="manual-list">
+      <div class="manual-step"><div class="manual-step-title">코드 체계</div><div class="manual-step-body">M은 이동, G는 쥐기, P는 놓기, R은 재파지, A는 압력, E는 시선, F는 손가락 동작을 나타냅니다. 각 코드는 고유 MOD 값을 가집니다.</div></div>
+      <div class="manual-step"><div class="manual-step-title">시간 계산</div><div class="manual-step-body">각 동작 시간은 MOD 수 × 0.129초로 계산합니다. 예를 들어 M3는 3 MOD이므로 0.387초로 산출됩니다.</div></div>
+      <div class="manual-step"><div class="manual-step-title">낭비 동작 판정</div><div class="manual-step-body">MOD 값이 큰 동작, 복잡 파지(G3), 압력 동작(A14) 등은 개선 검토 대상으로 표시됩니다.</div></div>
+    </div></div>
+  </div>`;
+}
+
+function tpManualAppHtml(){
+  return `<div class="manual-grid">
+    <div class="card">
+      <div class="card-title">Time Prism 기본 사용 흐름</div>
+      <div class="manual-list">
+        <div class="manual-step"><div class="manual-step-title">1. 영상 계측</div><div class="manual-step-body">Time Prism 탭의 영상 계측 메뉴에서 현장 영상을 로드합니다. 좌클릭은 시작/종료 마크를 순서대로 지정하고, 마우스 휠은 0.1초 단위로 프레임을 미세 이동합니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">2. 구간 속성 지정</div><div class="manual-step-body">구간 목록에서 수작업, 설비, 보행, 대기 중 하나를 선택하고 Level 1 동작군과 Level 2 MODAPTS 코드를 매핑합니다. 작업자 행도 함께 지정합니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">3. Time Prism 분석 실행</div><div class="manual-step-body">목표 택트타임, 작업자 수, 작업 강도, PDF 여유율, NT 기준을 입력한 뒤 분석을 실행하면 Gantt, 표준시간, Gap, 여유시간 지표가 계산됩니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">4. Preview 검증</div><div class="manual-step-body">Preview 버튼을 누르면 구간 순서에 따라 비디오가 재생되고, Gantt의 작업 블록과 현재 시간 흐름을 함께 확인할 수 있습니다.</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">밸런싱, 시뮬레이션, 출력</div>
+      <div class="manual-list">
+        <div class="manual-step"><div class="manual-step-title">Gantt 드래그 편성</div><div class="manual-step-body">Gantt &amp; 표준시간 화면에서 작업 블록을 다른 작업자 행으로 드래그하면 작업자별 부하, 편성효율, TF·FF·DF가 즉시 재계산됩니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">라인 밸런싱 확인</div><div class="manual-step-body">라인 밸런싱 메뉴에서 편성효율 85% 목표 달성 여부, TT 초과 작업자, 주공정선(CP), 전체여유·자유여유·의존여유를 확인합니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">3D ROI 시뮬레이션</div><div class="manual-step-body">부품통 거리와 개선 후 거리를 조정하면 이동 거리 변화가 MODAPTS 이동 코드 변화로 환산되고, 사이클당 절감시간과 연간 환산 효과가 표시됩니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">표준작업표 출력</div><div class="manual-step-body">표준작업표 출력 메뉴에서 시작시간(C), 소요시간(D), 분류(E), 작업(F), 누적시간(G), TT(H) 구조의 표준작업조합표를 CSV, JSON, PDF로 저장합니다.</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function tpManualLogicHtml(){
+  return `<div class="card">
+    <div class="card-title">Time Prism V2 산출 흐름</div>
+    <div class="logic-flow">
+      <div class="logic-node"><strong>구간 계측</strong><span>영상에서 시작·종료 타임스탬프와 실측시간 확보</span></div>
+      <div class="logic-node"><strong>가치 분류</strong><span>수작업, 설비, 보행, 대기 색상과 개선 우선순위 지정</span></div>
+      <div class="logic-node"><strong>MODAPTS 매핑</strong><span>Level 1 동작군과 Level 2 코드를 연결해 이론 NT 계산</span></div>
+      <div class="logic-node"><strong>ST 산출</strong><span>NT × (1 + PDF 여유율)로 표준시간 도출</span></div>
+      <div class="logic-node"><strong>편성 검증</strong><span>Gantt, TF·FF·DF, TT 초과, 3D ROI로 개선안 검증</span></div>
+    </div>
+  </div>
+  <div class="manual-grid">
+    <div class="card">
+      <div class="card-title">Time Prism 개요</div>
+      <div class="manual-list">
+        <div class="manual-step"><div class="manual-step-title">영상 기반 시간 프리즘</div><div class="manual-step-body">Time Prism은 실제 현장 영상을 시간축 구간 데이터로 변환합니다. 작업자는 Gantt 차트에서 누가, 언제, 어떤 동작을 수행했는지 한눈에 확인할 수 있습니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">가치/낭비 구분</div><div class="manual-step-body">수작업은 핵심 부가가치, 설비는 기계 가동, 보행과 대기는 비부가가치 낭비로 분리합니다. 보행·대기 시간이 클수록 레이아웃과 편성 개선 우선순위가 높습니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">MODAPTS 하이브리드</div><div class="manual-step-body">실측시간과 MODAPTS 이론시간을 나란히 비교하여 숙련도, 설비 간섭, 부품 위치, 동선 문제로 인한 Gap을 정량화합니다.</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">표준시간 및 밸런싱 로직</div>
+      <div class="manual-list">
+        <div class="manual-step"><div class="manual-step-title">정미시간(NT)</div><div class="manual-step-body">기본값은 MODAPTS 코드의 MOD 수 × 0.129초입니다. 옵션을 바꾸면 실측 평균 × 100% 레이팅 기준으로 NT를 계산할 수 있습니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">표준시간(ST)</div><div class="manual-step-body">ST = NT × (1 + PDF 여유율)입니다. PDF는 개인(P), 피로(F), 지연(D)을 의미하며 경량 10~15%, 중량 15~20%, 과중 20~25% 범위로 적용합니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">라인 밸런싱</div><div class="manual-step-body">작업자별 총 작업시간을 TT와 비교하고, 전체 작업량 ÷ (작업자 수 × Cycle Time)으로 편성효율을 산출합니다. 목표 기준은 85% 이상입니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">여유시간 TF·FF·DF</div><div class="manual-step-body">Forward/Backward Pass로 EST, EFT, LST, LFT를 계산합니다. TF = LFT - EFT, FF는 후속 EST - 현재 EFT, DF = TF - FF이며 TF가 0이면 주공정선(CP)으로 표시합니다.</div></div>
+        <div class="manual-step"><div class="manual-step-title">3D ROI 계산</div><div class="manual-step-body">부품통이나 설비 위치를 당기면 이동 거리 기준 MOD 코드가 낮아집니다. 줄어든 MOD 시간 × 일 생산량 × 가동일수로 연간 절감시간을 추정합니다.</div></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function onRoleChange(){
+  const role = document.getElementById('roleSelect').value;
+  const editNav = document.getElementById('nav-edit');
+  if(role==='operator' && currentAppMode==='modapts'){
+    editNav.style.opacity='0.35'; editNav.style.pointerEvents='none';
+    editNav.title='엔지니어 또는 PE 역할 필요';
+  } else {
+    editNav.style.opacity='1'; editNav.style.pointerEvents='auto'; editNav.title='';
+  }
+}
+
+// ═══════════════════════════════════════
+// Upload
+// ═══════════════════════════════════════
+function onDragOver(e){ e.preventDefault(); document.getElementById('uploadZone').classList.add('drag-over'); }
+function onDragLeave(){ document.getElementById('uploadZone').classList.remove('drag-over'); }
+function onDrop(e){
+  e.preventDefault(); document.getElementById('uploadZone').classList.remove('drag-over');
+  const f=e.dataTransfer.files[0]; if(f&&f.type.startsWith('video/')) loadVideo(f);
+}
+function onFileSelect(e){ const f=e.target.files[0]; if(f) loadVideo(f); }
+
+function loadVideo(file){
+  const v=document.getElementById('videoEl');
+  v.src=URL.createObjectURL(file);
+  document.getElementById('videoWrap').classList.remove('hidden');
+  document.getElementById('analyzeBtn').disabled=false;
+  document.getElementById('analyzeHint').textContent=`${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+  v.onloadedmetadata=()=>{
+    const fps=parseInt(document.getElementById('samplingFps').value);
+    document.getElementById('videoMeta').textContent=
+      `해상도: ${v.videoWidth}×${v.videoHeight} · 길이: ${v.duration.toFixed(1)}s · 예상 분석 프레임: ${Math.floor(v.duration*fps)}개`;
+  };
+}
+
+// ═══════════════════════════════════════
+// Analysis
+// ═══════════════════════════════════════
+const STEPS=[{l:'프레임\n추출',i:'📽'},{l:'손/부품\n추적',i:'🤚'},{l:'VLM\n분석',i:'🧠'},{l:'코드\n생성',i:'🏷'},{l:'결과\n계산',i:'✅'}];
+const STEP_MSGS=['영상에서 2 FPS로 프레임 추출 중...','Mediapipe 손 랜드마크 감지 및 추적 중...','VLM(GPT-4V)으로 동작 분류 중...','MODAPTS 코드 매핑 및 검증 중...','표준시간 대비 효율 계산 완료...'];
+
+function startAnalysis(){
+  const btn=document.getElementById('analyzeBtn');
+  btn.disabled=true; document.getElementById('doneAlert').classList.add('hidden');
+  document.getElementById('stepRow').innerHTML=STEPS.map((s,i)=>`
+    <div class="step-item" id="step${i}">
+      <div class="step-circle">${s.i}</div>
+      <div class="step-label">${s.l.replace('\n','<br>')}</div>
+    </div>`).join('');
+  document.getElementById('progressWrap').classList.remove('hidden');
+  runStep(0,()=>{
+    const v=document.getElementById('videoEl');
+    const dur=isNaN(v.duration)?18:v.duration;
+    data=buildData(dur);
+    document.getElementById('doneAlert').classList.remove('hidden');
+    btn.disabled=false; btn.textContent='▶ 재분석';
+    renderResults(); renderEdit(); renderReport();
+    setTimeout(()=>showPanel('results'),700);
+  });
+}
+
+function runStep(i, done){
+  if(i>=STEPS.length){ done(); return; }
+  if(i>0){
+    const prev=document.getElementById('step'+(i-1));
+    prev.classList.remove('act'); prev.classList.add('done');
+    prev.querySelector('.step-circle').textContent='✓';
+  }
+  document.getElementById('step'+i).classList.add('act');
+  document.getElementById('pbarFill').style.width=((i+0.5)/STEPS.length*100)+'%';
+  document.getElementById('pbarText').textContent=STEP_MSGS[i];
+  setTimeout(()=>runStep(i+1,done),[900,1300,2200,900,600][i]);
+}
+
+// ═══════════════════════════════════════
+// Data Generation
+// ═══════════════════════════════════════
+const PATTERNS=[
+  [{code:'M3',desc:'부품함으로 손 이동'},{code:'G1',desc:'부품 쥐기'},{code:'M4',desc:'기판 위치로 이동'},{code:'P5',desc:'정밀 삽입'}],
+  [{code:'M2',desc:'인접 부품 접근'},{code:'G0',desc:'단순 접촉'},{code:'M2',desc:'조립 위치 이동'},{code:'P2',desc:'일반 안착'}],
+  [{code:'M5',desc:'원거리 부품 접근'},{code:'G3',desc:'복잡 부품 파지'},{code:'R2',desc:'방향 조정'},{code:'M3',desc:'목표 위치 이동'},{code:'P5',desc:'정밀 삽입'}],
+  [{code:'E2',desc:'부품 확인 시선 이동'},{code:'M3',desc:'부품 집기 이동'},{code:'G1',desc:'쥐기'},{code:'M3',desc:'조립 위치 이동'},{code:'P2',desc:'일반 놓기'}],
+  [{code:'M2',desc:'짧은 이동'},{code:'G1',desc:'단순 쥐기'},{code:'M1',desc:'미세 조정'},{code:'P0',desc:'단순 안착'}],
+  [{code:'M4',desc:'공구 집기 이동'},{code:'G1',desc:'공구 파지'},{code:'F1',desc:'버튼 조작'},{code:'M3',desc:'복귀 이동'},{code:'P2',desc:'공구 내려놓기'}],
+];
+
+function buildData(dur){
+  const evs=[]; let t=0,id=1,pi=0;
+  while(t<dur-0.3){
+    for(const step of PATTERNS[pi%PATTERNS.length]){
+      const info=MODAPTS[step.code]; if(!info) continue;
+      const actual=Math.max(info.mods*MOD_S,0.04)*(1+(Math.random()-.5)*.18);
+      evs.push({id:id++,code:step.code,desc:step.desc,mods:info.mods,duration:+actual.toFixed(3),
+        startTime:+t.toFixed(3),endTime:+(t+actual).toFixed(3),cat:info.cat,color:info.color,
+        isWaste:info.mods>=5||step.code==='G3'||step.code==='A14'});
+      t+=actual; if(t>=dur) break;
+    }
+    pi++;
+  }
+  const totalMods=evs.reduce((s,e)=>s+e.mods,0);
+  const totalTime=evs[evs.length-1]?.endTime||0;
+  const stdMods=parseInt(document.getElementById('stdMods').value)||80;
+  const stdTime=stdMods*MOD_S;
+  return {evs, events:evs, totalMods, totalTime:+totalTime.toFixed(3),
+    stdMods, stdTime:+stdTime.toFixed(3), eff:+(stdTime/totalTime*100).toFixed(1),
+    processName:document.getElementById('processName').value,
+    workerId:document.getElementById('workerId').value,
+    date:new Date().toLocaleDateString('ko-KR'),
+    mode:document.getElementById('analysisMode').value, dur:+dur.toFixed(2)};
+}
+
+// ═══════════════════════════════════════
+// Results
+// ═══════════════════════════════════════
+function renderResults(){
+  if(!data) return;
+  document.getElementById('res-empty').classList.add('hidden');
+  const rc=document.getElementById('res-content');
+  rc.classList.remove('hidden'); rc.classList.add('fade-in');
+
+  const {events,totalMods,totalTime,stdMods,stdTime,eff}=data;
+  const tc=getTC(), wc=events.filter(e=>e.isWaste).length;
+
+  document.getElementById('kpiGrid').innerHTML=`
+    <div class="kpi-card blue">
+      <div class="kpi-label">총 동작 수</div>
+      <div class="kpi-value" style="color:${tc.kpiBlue}">${events.length}</div>
+      <div class="kpi-sub">총 ${totalMods} MOD</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">실제 작업 시간</div>
+      <div class="kpi-value" style="color:${tc.kpiGreen}">${totalTime.toFixed(2)}<span style="font-size:13px;font-weight:500">s</span></div>
+      <div class="kpi-sub">${totalMods} MOD × 0.129s</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">표준 시간</div>
+      <div class="kpi-value" style="color:${tc.kpiAmber}">${stdTime.toFixed(2)}<span style="font-size:13px;font-weight:500">s</span></div>
+      <div class="kpi-sub">기준 ${stdMods} MOD</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-label">효율성</div>
+      <div class="kpi-value" style="color:${eff>=90?tc.effGood:eff>=70?tc.effMid:tc.effBad}">${eff}<span style="font-size:13px;font-weight:500">%</span></div>
+      <div class="kpi-sub">낭비 동작 ${wc}건</div>
+    </div>`;
+
+  renderTimeline(events,totalTime);
+  renderCharts(events,totalMods);
+  renderWaste(events);
+  renderResTable(events);
+  document.getElementById('motionCount').textContent=`총 ${events.length}개 동작`;
+}
+
+function renderTimeline(events, totalTime){
+  const canvas=document.getElementById('tlCanvas');
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  // 패널이 hidden 상태면 너비가 0 → 다음 프레임으로 지연
+  if(rect.width===0){
+    requestAnimationFrame(()=>renderTimeline(events,totalTime));
+    return;
+  }
+  canvas.width=rect.width*dpr; canvas.height=200*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.scale(dpr,dpr);
+  const W=rect.width, H=200;
+  const PAD={t:18,r:16,b:30,l:76};
+  const cW=W-PAD.l-PAD.r, cH=H-PAD.t-PAD.b;
+  const tc=getTC();
+
+  ctx.fillStyle=tc.canvasBg; ctx.fillRect(0,0,W,H);
+
+  const cats=[...new Set(events.map(e=>e.cat))];
+  const rowH=cH/cats.length;
+
+  cats.forEach((cat,ci)=>{
+    const y=PAD.t+ci*rowH;
+    // Row label
+    ctx.fillStyle=tc.labelCol; ctx.font='11px JetBrains Mono,monospace';
+    ctx.textAlign='right'; ctx.fillText(CAT_LABEL[cat]||cat, PAD.l-8, y+rowH/2+4);
+    // Row bg
+    if(ci%2===0){ ctx.fillStyle=tc.rowBg; ctx.fillRect(PAD.l,y,cW,rowH); }
+    // Row divider
+    ctx.strokeStyle=tc.gridCol; ctx.lineWidth=.5;
+    ctx.beginPath(); ctx.moveTo(PAD.l,y+rowH); ctx.lineTo(W-PAD.r,y+rowH); ctx.stroke();
+
+    events.filter(e=>e.cat===cat).forEach(ev=>{
+      const x=PAD.l+(ev.startTime/totalTime)*cW;
+      const w=Math.max((ev.duration/totalTime)*cW,2);
+      const bH=rowH*.62, bY=y+rowH*.19;
+      ctx.fillStyle=ev.color; ctx.globalAlpha=.88;
+      roundRect(ctx,x,bY,w,bH,3); ctx.fill();
+      if(ev.isWaste){ ctx.globalAlpha=1; ctx.strokeStyle='#EF4444'; ctx.lineWidth=1.5; ctx.stroke(); }
+      ctx.globalAlpha=1;
+      if(w>26){ ctx.fillStyle=tc.barLabel; ctx.font='9px JetBrains Mono,monospace'; ctx.textAlign='center'; ctx.fillText(ev.code,x+w/2,bY+bH/2+3.5); }
+    });
+  });
+
+  // Axis
+  ctx.strokeStyle=tc.gridCol; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD.l,H-PAD.b); ctx.lineTo(W-PAD.r,H-PAD.b); ctx.stroke();
+  const ticks=Math.min(Math.ceil(totalTime)+1,12);
+  ctx.fillStyle=tc.labelCol; ctx.font='10px JetBrains Mono,monospace'; ctx.textAlign='center';
+  for(let i=0;i<=ticks;i++){
+    const t=totalTime*i/ticks, x=PAD.l+(t/totalTime)*cW;
+    ctx.strokeStyle=tc.gridCol; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(x,H-PAD.b); ctx.lineTo(x,H-PAD.b+4); ctx.stroke();
+    ctx.fillText(t.toFixed(1)+'s',x,H-PAD.b+16);
+  }
+
+  // Left border
+  ctx.strokeStyle=tc.gridCol; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(PAD.l,PAD.t); ctx.lineTo(PAD.l,H-PAD.b); ctx.stroke();
+
+  // Legend
+  document.getElementById('timelineLegend').innerHTML=
+    cats.map(c=>`<div class="legend-item"><div class="legend-dot" style="background:${CAT_COLOR[c]}"></div>${CAT_LABEL[c]||c}</div>`).join('')+
+    `<div class="legend-item"><div class="legend-dot" style="background:#EF4444;border:1px solid #EF4444"></div>낭비 동작</div>`;
+
+  // Hover tooltip
+  canvas.onmousemove=(e)=>{
+    const r=canvas.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const t=((mx-PAD.l)/cW)*totalTime;
+    const ci=Math.floor((my-PAD.t)/rowH);
+    const cat=cats[ci];
+    if(!cat||mx<PAD.l||mx>W-PAD.r){ hideTooltip(); return; }
+    const ev=events.find(e=>e.cat===cat&&t>=e.startTime&&t<=e.endTime);
+    if(ev){
+      const tt=document.getElementById('tooltip');
+      tt.style.display='block'; tt.style.left=(e.clientX+14)+'px'; tt.style.top=(e.clientY-10)+'px';
+      tt.innerHTML=`<div style="font-weight:700;margin-bottom:5px"><span class="code-badge code-${ev.cat}">${ev.code}</span></div>
+        <div style="color:var(--text3);font-size:11px;margin-bottom:6px">${ev.desc}</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)">
+          MOD: ${ev.mods} · ${ev.duration.toFixed(3)}s<br>
+          ${ev.startTime.toFixed(3)}s → ${ev.endTime.toFixed(3)}s
+        </div>${ev.isWaste?'<div style="color:#EF4444;font-size:10px;margin-top:5px;font-weight:700">⚠ 낭비 동작</div>':''}`;
+    } else hideTooltip();
+  };
+  canvas.onmouseleave=hideTooltip;
+}
+function hideTooltip(){ document.getElementById('tooltip').style.display='none'; }
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  if(ctx.roundRect){ ctx.roundRect(x,y,w,h,r); return; }
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+function getChartHeightCm(itemCount){
+  return Math.min(10, Math.max(6, 4 + itemCount * 0.8));
+}
+
+function setChartHeight(boxId, itemCount){
+  const box=document.getElementById(boxId);
+  if(box) box.style.height=`${getChartHeightCm(itemCount).toFixed(1)}cm`;
+}
+
+function renderCharts(events, totalMods){
+  const tc=getTC();
+  // Bar
+  const codeAgg={};
+  events.forEach(e=>{ if(!codeAgg[e.code]) codeAgg[e.code]={mods:0,cnt:0}; codeAgg[e.code].mods+=e.mods; codeAgg[e.code].cnt++; });
+  const sorted=Object.entries(codeAgg).sort((a,b)=>b[1].mods-a[1].mods);
+  setChartHeight('barChartBox', sorted.length);
+
+  if(typeof Chart==='undefined'){
+    if(barCh){ barCh.destroy(); barCh=null; }
+    if(pieCh){ pieCh.destroy(); pieCh=null; }
+    renderFallbackBarChart('barChart', sorted, tc);
+    const catAgg={};
+    events.forEach(e=>{ catAgg[e.cat]=(catAgg[e.cat]||0)+e.mods; });
+    setChartHeight('pieChartBox', Object.keys(catAgg).length);
+    renderFallbackPieChart('pieChart', catAgg, totalMods, tc);
+    return;
+  }
+
+  if(barCh) barCh.destroy();
+  barCh=new Chart(document.getElementById('barChart').getContext('2d'),{
+    type:'bar',
+    data:{labels:sorted.map(([c])=>c),datasets:[{label:'MOD',data:sorted.map(([,d])=>d.mods),
+      backgroundColor:sorted.map(([c])=>MODAPTS[c]?.color||'#64748B'),
+      borderRadius:{topRight:5,bottomRight:5},borderSkipped:'left',
+      maxBarThickness:16}]},
+    options:{
+      indexAxis:'y',
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{backgroundColor:tc.chartBg,borderColor:tc.chartBdr,borderWidth:1,titleColor:tc.chartTick,bodyColor:tc.chartLeg,
+        callbacks:{label:(ctx)=>{const[c,d]=sorted[ctx.dataIndex];return[`MOD 합계: ${d.mods}`,`발생: ${d.cnt}회`,`시간: ${(d.mods*MOD_S).toFixed(2)}s`];}}}},
+      scales:{
+        x:{grid:{color:tc.chartBdr},ticks:{color:tc.chartTick},border:{color:tc.chartBdr}},
+        y:{grid:{display:false},ticks:{color:tc.chartTick,font:{family:'JetBrains Mono',size:11}},border:{color:tc.chartBdr}}
+      }
+    }
+  });
+
+  // Pie
+  const catAgg={};
+  events.forEach(e=>{ catAgg[e.cat]=(catAgg[e.cat]||0)+e.mods; });
+  setChartHeight('pieChartBox', Object.keys(catAgg).length);
+  if(pieCh) pieCh.destroy();
+  pieCh=new Chart(document.getElementById('pieChart').getContext('2d'),{
+    type:'doughnut',
+    data:{labels:Object.keys(catAgg).map(k=>CAT_LABEL[k]||k),
+      datasets:[{data:Object.values(catAgg),backgroundColor:Object.keys(catAgg).map(k=>CAT_COLOR[k]||'#64748B'),
+        borderColor:tc.pieBdr,borderWidth:2}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',
+      plugins:{legend:{position:'right',labels:{color:tc.chartLeg,boxWidth:11,padding:12,font:{size:11}}},
+        tooltip:{backgroundColor:tc.chartBg,borderColor:tc.chartBdr,borderWidth:1,titleColor:tc.chartTick,bodyColor:tc.chartLeg,
+          callbacks:{label:(ctx)=>`${ctx.raw} MOD (${(ctx.raw/totalMods*100).toFixed(1)}%)`}}}}
+  });
+}
+
+function prepCanvas(canvasId, tc){
+  const canvas=document.getElementById(canvasId);
+  const dpr=window.devicePixelRatio||1;
+  const rect=canvas.getBoundingClientRect();
+  const width=Math.max(rect.width, 320);
+  const height=Math.max(rect.height, 220);
+  canvas.width=width*dpr;
+  canvas.height=height*dpr;
+  const ctx=canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,width,height);
+  ctx.fillStyle=tc.chartBg;
+  ctx.fillRect(0,0,width,height);
+  return {canvas,ctx,width,height};
+}
+
+function renderFallbackBarChart(canvasId, sorted, tc){
+  const {ctx,width,height}=prepCanvas(canvasId, tc);
+  const pad={t:18,r:24,b:24,l:64};
+  const plotW=width-pad.l-pad.r;
+  const rowH=Math.max(20, (height-pad.t-pad.b)/Math.max(sorted.length,1));
+  const max=Math.max(...sorted.map(([,d])=>d.mods),1);
+  ctx.font='11px JetBrains Mono, monospace';
+  ctx.textBaseline='middle';
+  sorted.forEach(([code,d],i)=>{
+    const y=pad.t+i*rowH+rowH*.5;
+    const barW=Math.max(2, (d.mods/max)*plotW);
+    ctx.fillStyle=tc.chartTick;
+    ctx.textAlign='right';
+    ctx.fillText(code,pad.l-10,y);
+    ctx.fillStyle=MODAPTS[code]?.color||'#64748B';
+    roundRect(ctx,pad.l,y-rowH*.28,barW,rowH*.56,5);
+    ctx.fill();
+    ctx.fillStyle=tc.chartLeg;
+    ctx.textAlign='left';
+    ctx.fillText(`${d.mods} MOD`,pad.l+barW+8,y);
+  });
+  ctx.fillStyle=tc.labelCol;
+  ctx.textAlign='center';
+  ctx.font='10px Noto Sans KR, sans-serif';
+  ctx.fillText('Chart.js CDN을 불러오지 못해 기본 캔버스 차트로 표시 중입니다.',width/2,height-10);
+}
+
+function renderFallbackPieChart(canvasId, catAgg, totalMods, tc){
+  const {ctx,width,height}=prepCanvas(canvasId, tc);
+  const entries=Object.entries(catAgg);
+  const cx=width*.36, cy=height*.48, r=Math.min(width,height)*.26;
+  let start=-Math.PI/2;
+  entries.forEach(([cat,mods])=>{
+    const angle=(mods/Math.max(totalMods,1))*Math.PI*2;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,start,start+angle);
+    ctx.closePath();
+    ctx.fillStyle=CAT_COLOR[cat]||'#64748B';
+    ctx.fill();
+    start+=angle;
+  });
+  ctx.beginPath();
+  ctx.arc(cx,cy,r*.58,0,Math.PI*2);
+  ctx.fillStyle=tc.chartBg;
+  ctx.fill();
+  ctx.font='11px Noto Sans KR, sans-serif';
+  ctx.textBaseline='middle';
+  entries.forEach(([cat,mods],i)=>{
+    const x=width*.68, y=height*.28+i*22;
+    ctx.fillStyle=CAT_COLOR[cat]||'#64748B';
+    ctx.fillRect(x,y-6,11,11);
+    ctx.fillStyle=tc.chartLeg;
+    ctx.fillText(`${CAT_LABEL[cat]||cat} ${mods} MOD`,x+18,y);
+  });
+}
+
+function renderWaste(events){
+  const wasteEvs=events.filter(e=>e.isWaste);
+  const el=document.getElementById('wasteList');
+  if(!wasteEvs.length){ el.innerHTML='<div style="color:var(--green);font-size:13px;font-weight:600">✅ 낭비 동작이 감지되지 않았습니다.</div>'; return; }
+  const byCode={};
+  wasteEvs.forEach(e=>{ (byCode[e.code]=byCode[e.code]||[]).push(e); });
+  el.innerHTML=Object.entries(byCode).map(([code,evs])=>`
+    <div style="padding:13px 16px;margin-bottom:8px;background:rgba(239,68,68,.05);border:1px solid rgba(239,68,68,.18);border-radius:10px">
+      <div class="flex items-center gap-8" style="margin-bottom:6px">
+        <span class="waste-tag">⚠ 낭비</span>
+        <span class="code-badge code-${MODAPTS[code]?.cat||'M'}">${code}</span>
+        <span style="font-weight:700">${evs.length}회 발생</span>
+        <span style="color:var(--text3);font-size:12px">(${evs.reduce((s,e)=>s+e.mods,0)} MOD · ${evs.reduce((s,e)=>s+e.duration,0).toFixed(2)}s)</span>
+      </div>
+      <div style="font-size:12px;color:var(--text3)">${WASTE_TIP[code]||'동작 빈도 및 시간을 검토하세요.'}</div>
+    </div>`).join('');
+}
+
+function renderResTable(events){
+  document.getElementById('resTbody').innerHTML=events.map(e=>`<tr class="${e.isWaste?'waste-row':''}">
+    <td style="color:var(--text3);font-family:'JetBrains Mono',monospace">${e.id}</td>
+    <td><span class="code-badge code-${e.cat}">${e.code}</span></td>
+    <td>${e.desc}</td>
+    <td style="font-family:'JetBrains Mono',monospace">${e.mods}</td>
+    <td style="font-family:'JetBrains Mono',monospace">${e.duration.toFixed(3)}s</td>
+    <td style="font-family:'JetBrains Mono',monospace;color:var(--text3)">${e.startTime.toFixed(3)}</td>
+    <td style="font-family:'JetBrains Mono',monospace;color:var(--text3)">${e.endTime.toFixed(3)}</td>
+    <td>${e.isWaste?'<span class="waste-tag">⚠ 낭비</span>':'<span style="color:var(--green);font-size:12px;font-weight:700">✓ 정상</span>'}</td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════
+// Edit Panel
+// ═══════════════════════════════════════
+function renderEdit(){
+  if(!data) return;
+  document.getElementById('edit-empty').classList.add('hidden');
+  document.getElementById('edit-content').classList.remove('hidden');
+  document.getElementById('editTbody').innerHTML=data.events.map((e,i)=>`
+    <tr id="er${i}">
+      <td style="color:var(--text3);font-family:'JetBrains Mono',monospace">${e.id}</td>
+      <td><select class="edit-select" id="ec${i}" onchange="onCodeChange(${i})">${Object.keys(MODAPTS).map(c=>`<option value="${c}"${c===e.code?' selected':''}>${c}</option>`).join('')}</select></td>
+      <td><input class="edit-input" style="width:192px" id="ed${i}" value="${e.desc}"></td>
+      <td style="font-family:'JetBrains Mono',monospace" id="em${i}">${e.mods}</td>
+      <td style="font-family:'JetBrains Mono',monospace" id="et${i}">${(e.mods*MOD_S).toFixed(3)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="document.getElementById('er${i}').remove();calcEditSum()">삭제</button></td>
+    </tr>`).join('');
+  calcEditSum();
+}
+
+function onCodeChange(i){
+  const code=document.getElementById('ec'+i).value, info=MODAPTS[code];
+  document.getElementById('em'+i).textContent=info.mods;
+  document.getElementById('et'+i).textContent=(info.mods*MOD_S).toFixed(3);
+  calcEditSum();
+}
+
+function addEditRow(){
+  const idx='n'+Date.now();
+  const tr=document.createElement('tr'); tr.id='er'+idx;
+  tr.innerHTML=`<td style="color:var(--text3)">NEW</td>
+    <td><select class="edit-select" id="ec${idx}" onchange="onDynChange('${idx}')">${Object.keys(MODAPTS).map(c=>`<option value="${c}">${c}</option>`).join('')}</select></td>
+    <td><input class="edit-input" style="width:192px" id="ed${idx}" value="새 동작"></td>
+    <td style="font-family:'JetBrains Mono',monospace" id="em${idx}">${MODAPTS['M3'].mods}</td>
+    <td style="font-family:'JetBrains Mono',monospace" id="et${idx}">${(MODAPTS['M3'].mods*MOD_S).toFixed(3)}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();calcEditSum()">삭제</button></td>`;
+  document.getElementById('editTbody').appendChild(tr); calcEditSum();
+}
+
+function onDynChange(idx){
+  const code=document.getElementById('ec'+idx).value, info=MODAPTS[code];
+  document.getElementById('em'+idx).textContent=info.mods;
+  document.getElementById('et'+idx).textContent=(info.mods*MOD_S).toFixed(3);
+  calcEditSum();
+}
+
+function calcEditSum(){
+  let mods=0, cnt=0;
+  document.querySelectorAll('#editTbody tr').forEach(tr=>{
+    const idx=tr.id.replace('er','');
+    const sel=document.getElementById('ec'+idx); if(!sel) return;
+    const info=MODAPTS[sel.value]; if(info){ mods+=info.mods; cnt++; }
+  });
+  const tc=getTC(), t=mods*MOD_S, std=data?.stdMods||80, eff=mods>0?(std/mods*100):0;
+  document.getElementById('editSummary').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">총 동작 수</div><div style="font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${tc.kpiBlue}">${cnt}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">총 MOD</div><div style="font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${tc.kpiGreen}">${mods}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">예상 시간</div><div style="font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${tc.kpiAmber}">${t.toFixed(2)}s</div></div>
+      <div><div style="font-size:10px;color:var(--text3);margin-bottom:4px;font-weight:800;text-transform:uppercase;letter-spacing:.06em">수정 후 효율</div><div style="font-size:26px;font-weight:900;font-family:'JetBrains Mono',monospace;color:${eff>=90?tc.effGood:eff>=70?tc.effMid:tc.effBad}">${eff.toFixed(1)}%</div></div>
+    </div>`;
+}
+
+function saveEdits(){
+  const evs=[]; let t=0, id=1;
+  document.querySelectorAll('#editTbody tr').forEach(tr=>{
+    const idx=tr.id.replace('er','');
+    const sel=document.getElementById('ec'+idx), desc=document.getElementById('ed'+idx);
+    if(!sel) return;
+    const code=sel.value, info=MODAPTS[code], dur=info.mods*MOD_S;
+    evs.push({id:id++,code,desc:desc?.value||info.desc,mods:info.mods,duration:+dur.toFixed(3),
+      startTime:+t.toFixed(3),endTime:+(t+dur).toFixed(3),cat:info.cat,color:info.color,
+      isWaste:info.mods>=5||code==='G3'||code==='A14'});
+    t+=dur;
+  });
+  const totalMods=evs.reduce((s,e)=>s+e.mods,0);
+  const totalTime=evs[evs.length-1]?.endTime||0;
+  const stdTime=data.stdMods*MOD_S;
+  data.events=evs; data.totalMods=totalMods; data.totalTime=+totalTime.toFixed(3);
+  data.stdTime=+stdTime.toFixed(3); data.eff=+(stdTime/totalTime*100).toFixed(1);
+  renderResults(); renderReport();
+  const b=document.getElementById('saveBtn'); b.textContent='✅ 저장 완료!';
+  setTimeout(()=>{ b.textContent='💾 저장 및 재계산'; },2000);
+}
+
+// ═══════════════════════════════════════
+// Report Panel
+// ═══════════════════════════════════════
+function renderReport(){
+  if(!data) return;
+  document.getElementById('rep-empty').classList.add('hidden');
+  document.getElementById('rep-content').classList.remove('hidden');
+
+  const {events,totalMods,totalTime,stdMods,stdTime,eff,processName,workerId,date,mode,dur}=data;
+  const wc=events.filter(e=>e.isWaste).length;
+  const modeLabel={gpt4v:'GPT-4V 시뮬레이션',llava:'LLaVA-NeXT 정밀 분석',mediapipe:'Mediapipe 전용'}[mode]||mode;
+
+  document.getElementById('repSubtitle').textContent=`${processName} · 작업자 ${workerId} · ${date}`;
+
+  const infoRows=[
+    ['공정명',processName],['작업자 ID',workerId],['분석 날짜',date],['분석 모드',modeLabel],
+    ['영상 길이',`${dur}초`],['총 동작 수',`${events.length}개`],
+    ['총 MOD',`${totalMods} MOD`],['실제 시간',`${totalTime.toFixed(3)}초`],
+    ['표준 시간',`${stdTime.toFixed(3)}초 (${stdMods} MOD)`],['효율성',`${eff}%`],['낭비 동작',`${wc}건`],
+  ];
+  document.getElementById('repInfo').innerHTML=
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 32px">${infoRows.map(([k,v])=>`<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`).join('')}</div>`;
+
+  const maxT=Math.max(totalTime,stdTime)*1.1;
+  const diff=totalTime-stdTime;
+  document.getElementById('repTime').innerHTML=`
+    <div style="margin-bottom:12px"><div style="font-size:12px;color:var(--text3);margin-bottom:5px;font-weight:600">실제 시간 <span style="font-family:'JetBrains Mono',monospace">${totalTime.toFixed(2)}s</span></div>
+      <div class="cmp-bar"><div class="cmp-fill" style="width:${(totalTime/maxT*100).toFixed(1)}%;background:var(--primary);opacity:.75"></div></div></div>
+    <div style="margin-bottom:16px"><div style="font-size:12px;color:var(--text3);margin-bottom:5px;font-weight:600">표준 시간 <span style="font-family:'JetBrains Mono',monospace">${stdTime.toFixed(2)}s</span></div>
+      <div class="cmp-bar"><div class="cmp-fill" style="width:${(stdTime/maxT*100).toFixed(1)}%;background:var(--amber)"></div></div></div>
+    <div style="font-size:13px;font-weight:700;color:${diff>0?'var(--red)':'var(--green)'}">${diff>0?'⚠':'✅'} ${diff>0?'+':''}${diff.toFixed(2)}s (표준 대비 ${diff>0?'초과':'단축'})</div>
+    <div style="font-size:12px;color:var(--text3);margin-top:5px">효율성 ${eff}% · ${eff>=100?'목표 달성 ✓':'개선 필요'}</div>`;
+
+  const catAgg={};
+  events.forEach(e=>{ if(!catAgg[e.cat]) catAgg[e.cat]={mods:0,cnt:0,time:0}; catAgg[e.cat].mods+=e.mods; catAgg[e.cat].cnt++; catAgg[e.cat].time+=e.duration; });
+  document.getElementById('repCat').innerHTML=`<table style="width:100%"><thead><tr><th>유형</th><th>횟수</th><th>MOD</th><th>시간(s)</th><th>비율</th></tr></thead><tbody>${
+    Object.entries(catAgg).sort((a,b)=>b[1].mods-a[1].mods).map(([cat,d])=>{
+      const pct=(d.mods/totalMods*100).toFixed(1);
+      return `<tr><td><div class="flex items-center gap-8"><div style="width:10px;height:10px;border-radius:3px;background:${CAT_COLOR[cat]};flex-shrink:0"></div>${CAT_LABEL[cat]||cat}</div></td>
+        <td style="font-family:'JetBrains Mono',monospace">${d.cnt}</td>
+        <td style="font-family:'JetBrains Mono',monospace">${d.mods}</td>
+        <td style="font-family:'JetBrains Mono',monospace">${d.time.toFixed(3)}</td>
+        <td><span class="eff-bar"><span class="eff-fill" style="display:block;width:${pct}%;background:${CAT_COLOR[cat]}"></span></span> <span style="font-size:11px;color:var(--text3);vertical-align:middle;margin-left:6px">${pct}%</span></td></tr>`;
+    }).join('')}</tbody></table>`;
+
+  document.getElementById('repTbody').innerHTML=events.map(e=>`<tr>
+    <td style="color:var(--text3);font-family:'JetBrains Mono',monospace">${e.id}</td>
+    <td><span class="code-badge code-${e.cat}">${e.code}</span></td>
+    <td>${e.desc}</td>
+    <td style="font-family:'JetBrains Mono',monospace">${e.mods}</td>
+    <td style="font-family:'JetBrains Mono',monospace">${e.duration.toFixed(3)}</td>
+    <td style="font-family:'JetBrains Mono',monospace;color:var(--text3)">${e.startTime.toFixed(3)}</td>
+    <td style="font-family:'JetBrains Mono',monospace;color:var(--text3)">${e.endTime.toFixed(3)}</td>
+    <td>${e.isWaste?'<span class="waste-tag">⚠ 낭비</span>':'<span style="color:var(--green);font-size:12px;font-weight:700">✓ 정상</span>'}</td>
+  </tr>`).join('');
+}
+
+// ═══════════════════════════════════════
+// Time Prism V2
+// ═══════════════════════════════════════
+function tpDragOver(e){ e.preventDefault(); document.getElementById('tpUploadZone').classList.add('drag-over'); }
+function tpDragLeave(){ document.getElementById('tpUploadZone').classList.remove('drag-over'); }
+function tpDrop(e){
+  e.preventDefault(); document.getElementById('tpUploadZone').classList.remove('drag-over');
+  const f=e.dataTransfer.files[0]; if(f&&f.type.startsWith('video/')) tpLoadVideo(f);
+}
+function tpFileSelect(e){ const f=e.target.files[0]; if(f) tpLoadVideo(f); }
+function tpLoadVideo(file){
+  const v=document.getElementById('tpVideoEl');
+  v.src=URL.createObjectURL(file);
+  tpState.videoFileName=file.name;
+  document.getElementById('tpVideoWrap').classList.remove('hidden');
+  document.getElementById('tpAnalyzeBtn').disabled=false;
+  document.getElementById('tpAnalyzeHint').textContent=`${file.name} (${(file.size/1024/1024).toFixed(1)} MB)`;
+  v.onloadedmetadata=()=>{
+    document.getElementById('tpVideoMeta').textContent=
+      `해상도: ${v.videoWidth}×${v.videoHeight} · 길이: ${v.duration.toFixed(1)}s · 현재 마크: -`;
+  };
+}
+function tpWheelSeek(e){
+  e.preventDefault();
+  const v=document.getElementById('tpVideoEl');
+  if(!v.duration) return;
+  v.currentTime=Math.max(0,Math.min(v.duration,v.currentTime+(e.deltaY>0?0.1:-0.1)));
+  tpUpdateVideoMeta();
+}
+function tpCaptureMark(){
+  if(tpState.markStart===null) tpMarkStart();
+  else tpMarkEnd();
+}
+function tpMarkStart(){
+  const v=document.getElementById('tpVideoEl');
+  tpState.markStart=+(v.currentTime||0).toFixed(2);
+  if(tpState.markEnd!==null && tpState.markEnd<tpState.markStart) tpState.markEnd=null;
+  tpUpdateVideoMeta();
+}
+function tpMarkEnd(){
+  const v=document.getElementById('tpVideoEl');
+  tpState.markEnd=+(v.currentTime||0).toFixed(2);
+  if(tpState.markStart!==null && tpState.markEnd<tpState.markStart){
+    const s=tpState.markStart; tpState.markStart=tpState.markEnd; tpState.markEnd=s;
+  }
+  tpUpdateVideoMeta();
+}
+function tpUpdateVideoMeta(){
+  const v=document.getElementById('tpVideoEl');
+  const meta=document.getElementById('tpVideoMeta');
+  if(!meta) return;
+  meta.textContent=`길이: ${(v.duration||0).toFixed(1)}s · 현재: ${(v.currentTime||0).toFixed(2)}s · 시작: ${tpState.markStart??'-'} · 종료: ${tpState.markEnd??'-'}`;
+}
+function tpOpenContext(e){
+  e.preventDefault();
+  const m=document.getElementById('tpContextMenu');
+  m.style.display='block'; m.style.left=e.clientX+'px'; m.style.top=e.clientY+'px';
+}
+function tpCloseContext(){ document.getElementById('tpContextMenu').style.display='none'; }
+function tpTogglePlay(){
+  const v=document.getElementById('tpVideoEl');
+  if(v.paused) v.play(); else v.pause();
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#tpContextMenu')) tpCloseContext();
+});
+function tpAddSegmentFromMarks(){
+  if(tpState.markStart===null || tpState.markEnd===null || tpState.markEnd<=tpState.markStart) return;
+  const idx=tpState.segments.length;
+  const defaults=TP_SAMPLE_SEGMENTS[idx%TP_SAMPLE_SEGMENTS.length];
+  tpState.segments.push({
+    id:idx+1,start:tpState.markStart,end:tpState.markEnd,observed:+(tpState.markEnd-tpState.markStart).toFixed(2),
+    type:defaults.type,level:defaults.level,code:defaults.code,desc:defaults.desc,worker:defaults.worker
+  });
+  tpRenderSegments();
+}
+function tpSeedSegments(render=true){
+  let t=0;
+  tpState.segments=TP_SAMPLE_SEGMENTS.map((s,i)=>{
+    const start=t; t+=s.observed;
+    return {...s,id:i+1,start:+start.toFixed(2),end:+t.toFixed(2)};
+  });
+  if(render) tpRenderSegments();
+}
+function tpSyncAllowance(){
+  document.getElementById('tpAllowance').value=(parseFloat(document.getElementById('tpIntensity').value)*100).toFixed(0);
+}
+function tpLevelOptions(selected){
+  return Object.entries(TP_LEVELS).map(([k,v])=>`<option value="${k}"${k===selected?' selected':''}>${v.label}</option>`).join('');
+}
+function tpCodeOptions(level, selected){
+  return (TP_LEVELS[level]?.codes||Object.keys(MODAPTS)).map(c=>`<option value="${c}"${c===selected?' selected':''}>${c} · ${MODAPTS[c]?.desc||''}</option>`).join('');
+}
+function tpRenderSegments(){
+  document.getElementById('tpSegmentTbody').innerHTML=tpState.segments.map((s,i)=>`
+    <tr>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--text3)">${s.id}</td>
+      <td><input class="edit-input" style="width:74px" value="${s.start.toFixed(2)}" onchange="tpUpdateSegment(${i},'start',this.value)"></td>
+      <td><input class="edit-input" style="width:74px" value="${s.end.toFixed(2)}" onchange="tpUpdateSegment(${i},'end',this.value)"></td>
+      <td><select class="edit-select" onchange="tpUpdateSegment(${i},'type',this.value)">${Object.entries(TP_TYPES).map(([k,v])=>`<option value="${k}"${k===s.type?' selected':''}>${v.label}</option>`).join('')}</select></td>
+      <td><select class="edit-select" onchange="tpUpdateSegment(${i},'level',this.value)">${tpLevelOptions(s.level)}</select></td>
+      <td><select class="edit-select" onchange="tpUpdateSegment(${i},'code',this.value)">${tpCodeOptions(s.level,s.code)}</select></td>
+      <td><select class="edit-select" onchange="tpUpdateSegment(${i},'worker',this.value)">${[1,2,3,4,5].map(w=>`<option value="${w}"${w===s.worker?' selected':''}>W-${w}</option>`).join('')}</select></td>
+      <td><button class="btn btn-danger btn-sm" onclick="tpDeleteSegment(${i})">삭제</button></td>
+    </tr>`).join('');
+}
+function tpUpdateSegment(i,key,value){
+  const s=tpState.segments[i]; if(!s) return;
+  if(key==='start'||key==='end'){ s[key]=parseFloat(value)||0; s.observed=Math.max(0.1,+(s.end-s.start).toFixed(2)); }
+  else if(key==='worker') s.worker=parseInt(value)||1;
+  else {
+    s[key]=value;
+    if(key==='level'){
+      s.code=TP_LEVELS[value].codes[0];
+      tpRenderSegments();
+      return;
+    }
+  }
+}
+function tpDeleteSegment(i){
+  tpState.segments.splice(i,1);
+  tpState.segments.forEach((s,idx)=>s.id=idx+1);
+  tpRenderSegments();
+}
+function tpStartAnalysis(){
+  if(!tpState.segments.length) tpSeedSegments(false);
+  tpState.data=tpBuildData();
+  tpRenderAll();
+  showPanel('tp-results');
+}
+function tpBuildData(){
+  const allowance=(parseFloat(document.getElementById('tpAllowance').value)||0)/100;
+  const workers=parseInt(document.getElementById('tpWorkerCount').value)||4;
+  const takt=parseFloat(document.getElementById('tpTaktTime').value)||30;
+  const basis=document.getElementById('tpStandardBasis').value;
+  let cumulative=0;
+  const tasks=tpState.segments.map((s,i)=>{
+    const info=MODAPTS[s.code]||MODAPTS.M3;
+    const nt=basis==='rating' ? s.observed : info.mods*MOD_S;
+    const st=nt*(1+allowance);
+    cumulative+=s.observed;
+    return {...s,id:i+1,mods:info.mods,cat:info.cat,nt:+nt.toFixed(3),st:+st.toFixed(3),
+      gap:+(s.observed-nt).toFixed(3),cumulative:+cumulative.toFixed(2)};
+  });
+  return tpComputeBalance({tasks,allowance,workers,takt,basis,processName:document.getElementById('tpProcessName').value,date:new Date().toLocaleDateString('ko-KR')});
+}
+function tpComputeBalance(base){
+  const {tasks,workers,takt}=base;
+  const loads=Array.from({length:workers},(_,i)=>({worker:i+1,time:0,items:[]}));
+  tasks.forEach(t=>{
+    const row=loads[(Math.max(1,Math.min(workers,t.worker))-1)];
+    t.rowStart=+row.time.toFixed(2);
+    t.rowEnd=+(row.time+t.observed).toFixed(2);
+    row.time+=t.observed; row.items.push(t);
+  });
+  const totalWork=tasks.reduce((s,t)=>s+t.observed,0);
+  const cycle=Math.max(...loads.map(l=>l.time),0.1);
+  const eff=totalWork/(workers*cycle)*100;
+  const projectDur=Math.max(takt,cycle);
+  let est=0;
+  const floats=tasks.map((t,i)=>{
+    const eft=est+t.observed;
+    const nextStart=tasks[i+1]?eft:projectDur;
+    const lft=projectDur-(tasks.slice(i+1).reduce((s,n)=>s+n.observed,0));
+    const lst=lft-t.observed;
+    const tf=Math.max(0,lft-eft);
+    const ff=Math.max(0,nextStart-eft);
+    const df=Math.max(0,tf-ff);
+    const out={...t,est:+est.toFixed(2),eft:+eft.toFixed(2),lst:+lst.toFixed(2),lft:+lft.toFixed(2),tf:+tf.toFixed(2),ff:+ff.toFixed(2),df:+df.toFixed(2),critical:tf<0.05};
+    est=eft;
+    return out;
+  });
+  return {...base,loads,totalWork:+totalWork.toFixed(2),cycle:+cycle.toFixed(2),eff:+eff.toFixed(1),projectDur:+projectDur.toFixed(2),floats};
+}
+function tpRenderAll(){
+  tpRenderResults();
+  tpRenderBalance();
+  tpRenderReport();
+  tpRenderSimulation();
+}
+function tpRenderResults(){
+  const d=tpState.data; if(!d) return;
+  document.getElementById('tpResEmpty').classList.add('hidden');
+  document.getElementById('tpResContent').classList.remove('hidden');
+  const totalNt=d.tasks.reduce((s,t)=>s+t.nt,0), totalSt=d.tasks.reduce((s,t)=>s+t.st,0), wait=d.tasks.filter(t=>t.type==='wait'||t.type==='walk').reduce((s,t)=>s+t.observed,0);
+  const tc=getTC();
+  document.getElementById('tpKpiGrid').innerHTML=`
+    <div class="kpi-card blue"><div class="kpi-label">관측 작업시간</div><div class="kpi-value" style="color:${tc.kpiBlue}">${d.totalWork.toFixed(1)}<span style="font-size:13px">s</span></div><div class="kpi-sub">${d.tasks.length}개 구간</div></div>
+    <div class="kpi-card green"><div class="kpi-label">${d.basis==='rating'?'실측 기준 NT':'MODAPTS NT'}</div><div class="kpi-value" style="color:${tc.kpiGreen}">${totalNt.toFixed(2)}<span style="font-size:13px">s</span></div><div class="kpi-sub">${d.basis==='rating'?'관측 평균 × 100% 레이팅':'주관 레이팅 배제 기준'}</div></div>
+    <div class="kpi-card amber"><div class="kpi-label">표준시간 ST</div><div class="kpi-value" style="color:${tc.kpiAmber}">${totalSt.toFixed(2)}<span style="font-size:13px">s</span></div><div class="kpi-sub">PDF ${(d.allowance*100).toFixed(0)}% 적용</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">편성효율</div><div class="kpi-value" style="color:${d.eff>=85?tc.effGood:tc.effBad}">${d.eff}<span style="font-size:13px">%</span></div><div class="kpi-sub">보행/대기 ${wait.toFixed(1)}s</div></div>`;
+  tpRenderGantt();
+  document.getElementById('tpStdCalc').innerHTML=`
+    ${infoRowHtml('정미시간(NT)',`${totalNt.toFixed(3)}초 · MODAPTS 이론 시간 합계`)}
+    ${infoRowHtml('PDF 여유율',`${(d.allowance*100).toFixed(0)}%`)}
+    ${infoRowHtml('표준시간(ST)',`${totalSt.toFixed(3)}초 = NT × (1 + 여유율)`)}
+    ${infoRowHtml('작업 강도 기준',document.getElementById('tpIntensity').selectedOptions[0].textContent)}`;
+  const gaps=[...d.tasks].sort((a,b)=>b.gap-a.gap).slice(0,5);
+  document.getElementById('tpGapList').innerHTML=gaps.map(t=>`
+    <div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div class="flex justify-between"><strong>${t.desc}</strong><span style="font-family:'JetBrains Mono',monospace;color:${t.gap>0?'var(--red)':'var(--green)'}">${t.gap>0?'+':''}${t.gap.toFixed(2)}s</span></div>
+      <div style="font-size:12px;color:var(--text3)">${TP_TYPES[t.type].label} · ${t.code} · 실측 ${t.observed.toFixed(2)}s / NT ${t.nt.toFixed(3)}s</div>
+    </div>`).join('');
+  document.getElementById('tpResultTbody').innerHTML=d.tasks.map(t=>`
+    <tr>
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--text3)">${t.id}</td>
+      <td><span class="tp-pill ${TP_TYPES[t.type].cls}">${TP_TYPES[t.type].label}</span></td>
+      <td>${TP_LEVELS[t.level]?.label||t.level}</td>
+      <td><span class="code-badge code-${t.cat}">${t.code}</span></td>
+      <td style="font-family:'JetBrains Mono',monospace">${t.observed.toFixed(2)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${t.nt.toFixed(3)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${t.st.toFixed(3)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;color:${t.gap>0?'var(--red)':'var(--green)'}">${t.gap>0?'+':''}${t.gap.toFixed(2)}</td>
+      <td>W-${t.worker}</td>
+    </tr>`).join('');
+}
+function infoRowHtml(k,v){ return `<div class="info-row"><span class="info-key">${k}</span><span class="info-val">${v}</span></div>`; }
+function tpRenderGantt(){
+  const d=tpState.data; if(!d) return;
+  const el=document.getElementById('tpGantt'); if(!el) return;
+  const maxT=Math.max(d.takt,d.cycle,1);
+  el.innerHTML=d.loads.map(load=>{
+    const blocks=load.items.map(t=>{
+      const left=((t.rowStart||0)/maxT*100), width=Math.max(t.observed/maxT*100,3);
+      const floatInfo=d.floats.find(f=>f.id===t.id);
+      const klass=floatInfo?.critical?' cp':'';
+      return `<div class="tp-block${klass}" draggable="true" ondragstart="tpDragTask(event,${t.id})" onclick="tpSeekTask(${t.id})"
+        style="left:${left.toFixed(2)}%;width:${width.toFixed(2)}%;background:${TP_TYPES[t.type].color}" title="${t.desc} · ${t.observed.toFixed(2)}s">${t.code}</div>`;
+    }).join('');
+    return `<div class="tp-worker-row">
+      <div class="tp-worker-label">W-${load.worker}</div>
+      <div class="tp-track" ondragover="event.preventDefault()" ondrop="tpDropTask(event,${load.worker})">
+        <div class="tp-takt-line" style="left:${Math.min(100,d.takt/maxT*100).toFixed(2)}%"></div>${blocks}
+      </div>
+      <div class="tp-row-total">${load.time.toFixed(1)}s</div>
+    </div>`;
+  }).join('');
+}
+function tpDragTask(e,id){ e.dataTransfer.setData('text/plain',String(id)); }
+function tpDropTask(e,worker){
+  const id=parseInt(e.dataTransfer.getData('text/plain'));
+  const seg=tpState.segments.find(s=>s.id===id); if(!seg) return;
+  seg.worker=worker;
+  tpState.data=tpBuildData();
+  tpRenderAll();
+}
+function tpSeekTask(id){
+  const t=tpState.data?.tasks.find(x=>x.id===id);
+  const v=document.getElementById('tpVideoEl');
+  if(t && v.duration){ v.currentTime=Math.min(t.start,v.duration); v.pause(); tpUpdateVideoMeta(); }
+}
+function tpPreviewSegments(){
+  const v=document.getElementById('tpVideoEl');
+  const tasks=tpState.data?.tasks || tpState.segments;
+  if(!tasks.length || !v.duration) return;
+  clearInterval(tpState.previewTimer);
+  let i=0;
+  const playNext=()=>{
+    const t=tasks[i++]; if(!t){ clearInterval(tpState.previewTimer); document.getElementById('tpPreviewLine').style.width='100%'; return; }
+    v.currentTime=Math.min(t.start,v.duration); v.play();
+    document.getElementById('tpPreviewLine').style.width=`${(i/tasks.length*100).toFixed(1)}%`;
+    setTimeout(()=>v.pause(),Math.max(300,t.observed*1000));
+  };
+  playNext();
+  tpState.previewTimer=setInterval(playNext,1800);
+}
+function tpRenderBalance(){
+  const d=tpState.data; if(!d) return;
+  document.getElementById('tpBalEmpty').classList.add('hidden');
+  document.getElementById('tpBalContent').classList.remove('hidden');
+  document.getElementById('tpEffGauge').style.width=Math.min(100,d.eff).toFixed(1)+'%';
+  const overloaded=d.loads.filter(l=>l.time>d.takt);
+  document.getElementById('tpBalanceSummary').innerHTML=`
+    <div class="${d.eff>=85?'manual-note':'tp-alert'}">편성효율 ${d.eff}% · 목표 ${d.eff>=85?'달성':'미달'} · Cycle ${d.cycle.toFixed(1)}s / TT ${d.takt.toFixed(1)}s ${overloaded.length?`· 과부하 ${overloaded.map(l=>'W-'+l.worker).join(', ')}`:''}</div>`;
+  document.getElementById('tpFloatTbody').innerHTML=d.floats.map(f=>`
+    <tr class="${f.critical?'waste-row':''}">
+      <td style="font-family:'JetBrains Mono',monospace;color:var(--text3)">${f.id}</td><td>${f.desc}</td>
+      <td>${f.est.toFixed(2)}</td><td>${f.eft.toFixed(2)}</td><td>${f.lst.toFixed(2)}</td><td>${f.lft.toFixed(2)}</td>
+      <td>${f.tf.toFixed(2)}</td><td>${f.ff.toFixed(2)}</td><td>${f.df.toFixed(2)}</td>
+      <td>${f.critical?'<span class="waste-tag">CP</span>':f.eft>d.takt?'<span class="waste-tag">TT 초과</span>':'<span style="color:var(--green);font-weight:800;font-size:12px">정상</span>'}</td>
+    </tr>`).join('');
+  document.getElementById('tpWorkerLoad').innerHTML=d.loads.map(l=>{
+    const pct=Math.min(100,l.time/d.takt*100);
+    return `<div style="margin-bottom:12px">
+      <div class="flex justify-between" style="font-size:12px;margin-bottom:5px"><strong>W-${l.worker}</strong><span style="font-family:'JetBrains Mono',monospace;color:${l.time>d.takt?'var(--red)':'var(--text2)'}">${l.time.toFixed(1)}s / ${d.takt.toFixed(1)}s</span></div>
+      <div class="cmp-bar"><div class="cmp-fill" style="width:${pct.toFixed(1)}%;background:${l.time>d.takt?'var(--red)':'var(--primary)'}"></div></div>
+    </div>`;
+  }).join('');
+}
+function tpAutoBalance(){
+  const workers=parseInt(document.getElementById('tpWorkerCount').value)||4;
+  const sorted=[...tpState.segments].sort((a,b)=>b.observed-a.observed);
+  const loads=Array.from({length:workers},(_,i)=>({worker:i+1,time:0}));
+  sorted.forEach(s=>{
+    loads.sort((a,b)=>a.time-b.time);
+    s.worker=loads[0].worker; loads[0].time+=s.observed;
+  });
+  tpRenderSegments();
+  tpState.data=tpBuildData();
+  tpRenderAll();
+}
+function tpModCodeByDistance(cm){
+  if(cm<=2.5) return 'M1';
+  if(cm<=5) return 'M2';
+  if(cm<=15) return 'M3';
+  if(cm<=30) return 'M4';
+  if(cm<=45) return 'M5';
+  return 'M6';
+}
+function tpRenderSimulation(){
+  const oldD=parseFloat(document.getElementById('tpBinDistance')?.value||45);
+  const newD=parseFloat(document.getElementById('tpNewDistance')?.value||25);
+  const qty=parseInt(document.getElementById('tpDailyQty')?.value||1200);
+  const oldCode=tpModCodeByDistance(oldD), newCode=tpModCodeByDistance(newD);
+  const oldTime=MODAPTS[oldCode].mods*MOD_S, newTime=MODAPTS[newCode].mods*MOD_S;
+  const save=Math.max(0,oldTime-newTime), annual=save*qty*250/3600;
+  const set=(id,val)=>{ const e=document.getElementById(id); if(e) e.textContent=val; };
+  set('tpBinDistanceVal',oldD+'cm'); set('tpNewDistanceVal',newD+'cm'); set('tpDailyQtyVal',qty.toLocaleString()+'개');
+  const bin=document.getElementById('tpBin'), line=document.getElementById('tpRoiLine');
+  if(bin) bin.style.left=Math.max(14,120-oldD*1.25)+'px';
+  if(line) line.style.width=Math.max(48,oldD*2.2)+'px';
+  const out=document.getElementById('tpSimResult');
+  if(out) out.innerHTML=`
+    ${infoRowHtml('현재 이동 코드',`${oldCode} · ${oldTime.toFixed(3)}초`)}
+    ${infoRowHtml('개선 후 코드',`${newCode} · ${newTime.toFixed(3)}초`)}
+    ${infoRowHtml('사이클당 절감',`${save.toFixed(3)}초`)}
+    ${infoRowHtml('연간 환산 절감',`${annual.toFixed(1)}시간 · ${qty.toLocaleString()}개/일 × 250일`)}
+    <div class="manual-note mt-16">부품통을 ${Math.max(0,oldD-newD).toFixed(0)}cm 당기면 ${oldCode} → ${newCode}로 MODAPTS 이동 코드가 낮아지고, Time Prism Preview로 재배치 흐름을 영상과 함께 검증할 수 있습니다.</div>`;
+}
+function tpRenderReport(){
+  const d=tpState.data; if(!d) return;
+  document.getElementById('tpReportEmpty').classList.add('hidden');
+  document.getElementById('tpReportContent').classList.remove('hidden');
+  document.getElementById('tpReportSubtitle').textContent=`${d.processName} · ${d.date} · TT ${d.takt}s`;
+  const st=d.tasks.reduce((s,t)=>s+t.st,0);
+  document.getElementById('tpScmSummary').innerHTML=`
+    ${infoRowHtml('표준시간',`${st.toFixed(3)}초`)}
+    ${infoRowHtml('편성효율',`${d.eff}%`)}
+    ${infoRowHtml('ERP 전송 필드',`공정명, 작업자별 부하, ST, TT 초과 여부, 보행/대기 낭비시간`)}
+    ${infoRowHtml('SCM 기대효과',`변동성 제거 리드타임 기반 안전재고 및 생산계획 정밀도 향상`)}`;
+  document.getElementById('tpReportTbody').innerHTML=d.tasks.map(t=>{
+    const warn=t.observed>d.takt?'✕':t.type==='wait'?'!':'✓';
+    return `<tr>
+      <td>${t.id}</td><td style="font-family:'JetBrains Mono',monospace">${t.start.toFixed(2)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${t.observed.toFixed(2)}</td>
+      <td><span class="tp-pill ${TP_TYPES[t.type].cls}">${TP_TYPES[t.type].label}</span></td>
+      <td>${t.desc} <span class="code-badge code-${t.cat}">${t.code}</span></td>
+      <td style="font-family:'JetBrains Mono',monospace">${t.cumulative.toFixed(2)}</td>
+      <td style="font-family:'JetBrains Mono',monospace">${d.takt.toFixed(1)}</td>
+      <td style="font-weight:900;color:${warn==='✕'?'var(--red)':warn==='!'?'var(--amber)':'var(--green)'}">${warn}</td>
+    </tr>`;
+  }).join('');
+}
+function tpExportCSV(){
+  const d=tpState.data; if(!d) return;
+  const meta=[`# Time Prism 표준작업조합표`,`# 공정명: ${d.processName}`,`# TT: ${d.takt}s`,`# PDF 여유율: ${(d.allowance*100).toFixed(0)}%`,`# 편성효율: ${d.eff}%`,``];
+  const hdr=['#','시작시간(C)','소요시간(D)','분류(E)','작업(F)','누적시간(G)','TT(H)','MODAPTS','NT','ST','작업자'];
+  const rows=d.tasks.map(t=>[t.id,t.start.toFixed(2),t.observed.toFixed(2),TP_TYPES[t.type].label,`"${t.desc}"`,t.cumulative.toFixed(2),d.takt.toFixed(1),t.code,t.nt.toFixed(3),t.st.toFixed(3),`W-${t.worker}`]);
+  dl('time_prism_standard_work.csv',[...meta,hdr.join(','),...rows.map(r=>r.join(','))].join('\n'),'text/csv;charset=utf-8');
+}
+function tpExportJSON(){
+  const d=tpState.data; if(!d) return;
+  dl('time_prism_v2.json',JSON.stringify(d,null,2),'application/json');
+}
+
+// ═══════════════════════════════════════
+// Export
+// ═══════════════════════════════════════
+function exportCSV(){
+  if(!data) return;
+  const meta=[`# 공정 동작 분석 보고서`,`# 공정명: ${data.processName}`,`# 작업자: ${data.workerId}`,
+    `# 날짜: ${data.date}`,`# 총 MOD: ${data.totalMods}`,`# 실제 시간: ${data.totalTime.toFixed(3)}s`,
+    `# 표준 시간: ${data.stdTime.toFixed(3)}s`,`# 효율성: ${data.eff}%`,``];
+  const hdr=['#','MODAPTS 코드','동작 설명','MOD 수','소요 시간(s)','시작 시간(s)','종료 시간(s)','판정'];
+  const rows=data.events.map(e=>[e.id,e.code,`"${e.desc}"`,e.mods,e.duration.toFixed(3),e.startTime.toFixed(3),e.endTime.toFixed(3),e.isWaste?'낭비':'정상']);
+  dl('modapts_analysis.csv',[...meta,hdr.join(','),...rows.map(r=>r.join(','))].join('\n'),'text/csv;charset=utf-8');
+}
+
+function exportJSON(){
+  if(!data) return;
+  dl('modapts_analysis.json',JSON.stringify({
+    meta:{processName:data.processName,workerId:data.workerId,date:data.date,mode:data.mode,videoDuration:data.dur,
+          totalEvents:data.events.length,totalMods:data.totalMods,totalTime:data.totalTime,
+          stdMods:data.stdMods,stdTime:data.stdTime,efficiency:data.eff,wasteEvents:data.events.filter(e=>e.isWaste).length},
+    events:data.events},null,2),'application/json');
+}
+
+function loadPdfScript(src, globalCheck){
+  return new Promise((resolve,reject)=>{
+    if(globalCheck()) { resolve(); return; }
+    const s=document.createElement('script');
+    s.src=src; s.onload=resolve; s.onerror=reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function ensurePdfLibs(){
+  await loadPdfScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js',()=>typeof window.html2canvas==='function');
+  await loadPdfScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js',()=>!!window.jspdf?.jsPDF);
+}
+
+async function exportReportPDF(kind){
+  const cfg = kind === 'timeprism'
+    ? {el:'tpReportContent', btn:'timePrismPdfBtn', name:'time_prism_standard_work.pdf'}
+    : {el:'rep-content', btn:'modaptsPdfBtn', name:'modapts_analysis_report.pdf'};
+  const target=document.getElementById(cfg.el);
+  const btn=document.getElementById(cfg.btn);
+  if(!target || target.classList.contains('hidden')) return;
+
+  const oldText=btn?.textContent;
+  try{
+    if(btn){ btn.disabled=true; btn.textContent='PDF 생성 중...'; }
+    await ensurePdfLibs();
+    document.body.classList.add('pdf-capturing');
+    await document.fonts?.ready;
+
+    const canvas=await html2canvas(target,{
+      scale:Math.min(2,window.devicePixelRatio||1.5),
+      backgroundColor:getComputedStyle(document.documentElement).getPropertyValue('--bg').trim()||'#FFFFFF',
+      useCORS:true,
+      logging:false,
+      windowWidth:target.scrollWidth,
+      windowHeight:target.scrollHeight
+    });
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pageW=pdf.internal.pageSize.getWidth();
+    const pageH=pdf.internal.pageSize.getHeight();
+    const margin=8;
+    const imgW=pageW-margin*2;
+    const imgH=canvas.height*imgW/canvas.width;
+    const img=canvas.toDataURL('image/png',1.0);
+    let y=margin, left=imgH;
+    pdf.addImage(img,'PNG',margin,y,imgW,imgH);
+    left-=pageH-margin*2;
+    while(left>0){
+      pdf.addPage();
+      y=margin-(imgH-left);
+      pdf.addImage(img,'PNG',margin,y,imgW,imgH);
+      left-=pageH-margin*2;
+    }
+    pdf.save(cfg.name);
+  }catch(err){
+    console.error(err);
+    alert('PDF 생성 라이브러리를 불러오지 못했습니다. 네트워크 연결을 확인한 뒤 다시 시도하세요.');
+  }finally{
+    document.body.classList.remove('pdf-capturing');
+    if(btn){ btn.disabled=false; btn.textContent=oldText; }
+  }
+}
+
+function dl(name,content,mime){
+  const b=new Blob(['﻿'+content],{type:mime});
+  const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(b),download:name});
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+</script>
+</body>
+</html>
