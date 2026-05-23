@@ -1,0 +1,1075 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>게임 판매 대시보드 | 시장/지역 × 플랫폼 전략</title>
+
+  <!-- Tailwind CSS (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- PapaParse (CSV 파싱) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    /* 차트 캔버스가 부모 높이를 잘 따라가도록 */
+    canvas { width: 100% !important; height: 100% !important; }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+  <!-- Header -->
+  <header class="sticky top-0 z-10 border-b bg-white/80 backdrop-blur">
+    <div class="mx-auto max-w-7xl px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
+          <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="text-lg sm:text-xl font-bold">게임 판매 대시보드</h1>
+          <p class="text-xs sm:text-sm text-slate-500">
+            시장/지역 전략 × 플랫폼 전략 — “어디서 팔렸는가”와 “무엇을 타고 팔렸는가”
+          </p>
+        </div>
+      </div>
+
+      <!-- Upload & Dataset info -->
+      <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+        <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-slate-50 cursor-pointer">
+          <i data-lucide="upload" class="w-4 h-4"></i>
+          <span class="text-sm font-medium">CSV 업로드</span>
+          <input id="fileInput" type="file" accept=".csv" class="hidden" />
+        </label>
+
+        <div class="text-xs text-slate-500">
+          <div>데이터: <span id="datasetName" class="font-semibold text-slate-700">샘플(Top25)</span></div>
+          <div>행 수: <span id="rowCount" class="font-semibold text-slate-700">25</span></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="mx-auto max-w-7xl px-4 py-6 space-y-6">
+
+    <!-- Controls -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div class="lg:col-span-8 bg-white border rounded-2xl p-4">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <div class="flex items-center gap-2">
+            <i data-lucide="sliders-horizontal" class="w-4 h-4 text-slate-600"></i>
+            <h2 class="font-semibold">필터 & 집계 옵션</h2>
+          </div>
+
+          <!-- 집계 기준 라디오 -->
+          <div class="flex items-center gap-3 flex-wrap">
+            <span class="text-xs text-slate-500">집계 기준</span>
+            <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-slate-50 cursor-pointer">
+              <input type="radio" name="aggMode" value="GAME" checked />
+              <span class="text-sm font-medium">게임명 기준(멀티플랫폼 합산)</span>
+            </label>
+            <label class="inline-flex items-center gap-2 px-3 py-2 rounded-xl border bg-white hover:bg-slate-50 cursor-pointer">
+              <input type="radio" name="aggMode" value="PLATFORM" />
+              <span class="text-sm font-medium">플랫폼별 분리(동일 게임 분리)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- 플랫폼 필터 -->
+          <div>
+            <label class="text-xs text-slate-500">플랫폼</label>
+            <select id="platformFilter" class="mt-1 w-full rounded-xl border px-3 py-2 bg-white">
+              <option value="ALL">전체</option>
+            </select>
+            <p class="mt-1 text-[11px] text-slate-400">
+              ※ 플랫폼 명칭은 서로 다른 제품으로 그대로 유지합니다.
+            </p>
+          </div>
+
+          <!-- 장르 필터 -->
+          <div>
+            <label class="text-xs text-slate-500">장르</label>
+            <select id="genreFilter" class="mt-1 w-full rounded-xl border px-3 py-2 bg-white">
+              <option value="ALL">전체</option>
+            </select>
+          </div>
+
+          <!-- 퍼블리셔 필터 -->
+          <div>
+            <label class="text-xs text-slate-500">퍼블리셔</label>
+            <select id="publisherFilter" class="mt-1 w-full rounded-xl border px-3 py-2 bg-white">
+              <option value="ALL">전체</option>
+            </select>
+          </div>
+
+          <!-- Top N -->
+          <div>
+            <label class="text-xs text-slate-500">Top N</label>
+            <select id="topN" class="mt-1 w-full rounded-xl border px-3 py-2 bg-white">
+              <option value="10">10</option>
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="ALL">전체</option>
+            </select>
+            <p class="mt-1 text-[11px] text-slate-400">
+              전체 데이터 업로드 시 범위를 조절합니다.
+            </p>
+          </div>
+        </div>
+
+        <!-- 작은 유틸 토글 -->
+        <div class="mt-4 flex items-center gap-2 flex-wrap">
+          <button id="scaleToggle" class="px-3 py-2 rounded-xl border text-sm bg-white hover:bg-slate-50">
+            TopN 스케일: 일반
+          </button>
+
+          <button id="platformMetricToggle" class="px-3 py-2 rounded-xl border text-sm bg-white hover:bg-slate-50">
+            플랫폼 성과: 총판매량
+          </button>
+
+          <button id="resetFilters" class="px-3 py-2 rounded-xl border text-sm bg-white hover:bg-slate-50">
+            필터 초기화
+          </button>
+        </div>
+      </div>
+
+      <!-- 지역 요약 -->
+      <div class="lg:col-span-4 bg-white border rounded-2xl p-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="globe" class="w-4 h-4 text-slate-600"></i>
+          <h2 class="font-semibold">지역 관점 요약</h2>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <div class="rounded-2xl bg-slate-50 border p-3">
+            <div class="text-xs text-slate-500">북미 비중</div>
+            <div class="mt-1 text-xl font-bold"><span id="naShare">-</span>%</div>
+          </div>
+          <div class="rounded-2xl bg-slate-50 border p-3">
+            <div class="text-xs text-slate-500">유럽 비중</div>
+            <div class="mt-1 text-xl font-bold"><span id="euShare">-</span>%</div>
+          </div>
+          <div class="rounded-2xl bg-slate-50 border p-3">
+            <div class="text-xs text-slate-500">일본 비중</div>
+            <div class="mt-1 text-xl font-bold"><span id="jpShare">-</span>%</div>
+          </div>
+          <div class="rounded-2xl bg-slate-50 border p-3">
+            <div class="text-xs text-slate-500">기타 비중</div>
+            <div class="mt-1 text-xl font-bold"><span id="otherShare">-</span>%</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPI Cards -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-white border rounded-2xl p-4">
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-slate-500">총 글로벌 판매량</div>
+          <i data-lucide="sigma" class="w-4 h-4 text-slate-400"></i>
+        </div>
+        <div class="mt-2 text-2xl font-bold"><span id="kpiTotalGlobal">-</span></div>
+        <div class="mt-1 text-xs text-slate-500">선택된 범위 기준 합계</div>
+      </div>
+
+      <div class="bg-white border rounded-2xl p-4">
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-slate-500">중앙값(글로벌)</div>
+          <i data-lucide="activity" class="w-4 h-4 text-slate-400"></i>
+        </div>
+        <div class="mt-2 text-2xl font-bold"><span id="kpiMedianGlobal">-</span></div>
+        <div class="mt-1 text-xs text-slate-500">슈퍼히트 왜곡을 줄이는 지표</div>
+      </div>
+
+      <div class="bg-white border rounded-2xl p-4">
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-slate-500">1위 판매량 비중</div>
+          <i data-lucide="crown" class="w-4 h-4 text-slate-400"></i>
+        </div>
+        <div class="mt-2 text-2xl font-bold"><span id="kpiTop1Share">-</span>%</div>
+        <div class="mt-1 text-xs text-slate-500">시장 집중도</div>
+      </div>
+
+      <div class="bg-white border rounded-2xl p-4">
+        <div class="flex items-center justify-between">
+          <div class="text-xs text-slate-500">최강 플랫폼</div>
+          <i data-lucide="gamepad-2" class="w-4 h-4 text-slate-400"></i>
+        </div>
+        <div class="mt-2 text-xl font-bold"><span id="kpiTopPlatform">-</span></div>
+        <div class="mt-1 text-xs text-slate-500">총판매량 기준 1위</div>
+      </div>
+    </section>
+
+    <!-- Charts Grid (5개) -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <!-- 1) Top N -->
+      <div class="lg:col-span-7 bg-white border rounded-2xl p-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="list-ordered" class="w-4 h-4 text-slate-600"></i>
+          <h3 class="font-semibold">Top N 글로벌 판매량</h3>
+        </div>
+        <p class="mt-1 text-xs text-slate-500">
+          히트의 “크기”를 보여줍니다. (일반/로그 스케일 토글 가능)
+        </p>
+        <div class="mt-3 h-72">
+          <canvas id="chartTopN"></canvas>
+        </div>
+      </div>
+
+      <!-- 2) 지역 비중 -->
+      <div class="lg:col-span-5 bg-white border rounded-2xl p-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="pie-chart" class="w-4 h-4 text-slate-600"></i>
+          <h3 class="font-semibold">지역 판매 비중</h3>
+        </div>
+        <p class="mt-1 text-xs text-slate-500">
+          시장/지역 전략의 핵심: “누가 샀는가(지역)”가 매출을 움직입니다.
+        </p>
+        <div class="mt-3 h-72">
+          <canvas id="chartRegionShare"></canvas>
+        </div>
+      </div>
+
+      <!-- 3) 플랫폼 성과 -->
+      <div class="lg:col-span-6 bg-white border rounded-2xl p-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="layers" class="w-4 h-4 text-slate-600"></i>
+          <h3 class="font-semibold">플랫폼별 성과</h3>
+        </div>
+        <p class="mt-1 text-xs text-slate-500">
+          플랫폼 전략: “유통/설치기반”이 성과를 증폭시킵니다. (총판매량↔타이틀 수)
+        </p>
+        <div class="mt-3 h-72">
+          <canvas id="chartPlatform"></canvas>
+        </div>
+      </div>
+
+      <!-- 4) 연도 산점도 -->
+      <div class="lg:col-span-6 bg-white border rounded-2xl p-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="scatter-chart" class="w-4 h-4 text-slate-600"></i>
+          <h3 class="font-semibold">연도 × 글로벌 판매량</h3>
+        </div>
+        <p class="mt-1 text-xs text-slate-500">
+          시대 흐름 속에서 히트가 “언제 터졌는지”를 봅니다.
+        </p>
+        <div class="mt-3 h-72">
+          <canvas id="chartYearScatter"></canvas>
+        </div>
+      </div>
+
+      <!-- 5) 장르 × 지역(그룹 막대) -->
+      <div class="lg:col-span-12 bg-white border rounded-2xl p-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="grid-3x3" class="w-4 h-4 text-slate-600"></i>
+          <h3 class="font-semibold">장르 × 지역 판매(그룹 막대)</h3>
+        </div>
+        <p class="mt-1 text-xs text-slate-500">
+          “지역별로 어떤 장르가 먹히는가”를 한 번에 비교합니다.
+        </p>
+        <div class="mt-3 h-80">
+          <canvas id="chartGenreRegion"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Insights -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+      <div class="lg:col-span-8 bg-white border rounded-2xl p-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-4 h-4 text-slate-600"></i>
+          <h3 class="font-semibold">자동 인사이트 (원인-현상-영향)</h3>
+        </div>
+        <p class="mt-1 text-xs text-slate-500">
+          숫자 나열이 아니라 “판단을 돕는 문장”으로 변환합니다.
+        </p>
+        <div id="insightList" class="mt-3 space-y-3"></div>
+      </div>
+
+      <div class="lg:col-span-4 bg-white border rounded-2xl p-4">
+        <div class="flex items-center gap-2">
+          <i data-lucide="shield-alert" class="w-4 h-4 text-slate-600"></i>
+          <h3 class="font-semibold">해석 가드레일</h3>
+        </div>
+
+        <div class="mt-3 space-y-3 text-sm">
+          <div class="rounded-2xl border bg-slate-50 p-3">
+            <div class="font-semibold">멀티플랫폼 게임</div>
+            <div class="text-slate-600 mt-1">
+              같은 게임이 플랫폼별로 존재할 수 있습니다. “집계 기준”에서 <span class="font-medium">합산</span>/<span class="font-medium">분리</span>로 해석이 달라집니다.
+            </div>
+          </div>
+
+          <div class="rounded-2xl border bg-slate-50 p-3">
+            <div class="font-semibold">전체 데이터 반영</div>
+            <div class="text-slate-600 mt-1">
+              CSV 업로드 시 전체 데이터로 즉시 재계산합니다. Top N을 “ALL”로 바꾸면 전수 기반입니다.
+            </div>
+          </div>
+
+          <div class="rounded-2xl border bg-slate-50 p-3">
+            <div class="font-semibold">플랫폼 명칭 유지</div>
+            <div class="text-slate-600 mt-1">
+              플랫폼 표기는 통합하지 않습니다(서로 다른 제품/세대일 수 있음).
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="py-6 text-center text-xs text-slate-500">
+      <p>© Standalone WebApp — Vanilla JS + HTML5 + Tailwind + Chart.js</p>
+    </footer>
+  </main>
+
+  <script>
+    // ─────────────────────────────────────────────────────────────
+    // 0) 샘플 데이터 (업로드 없이도 바로 구동되게)
+    //    ※ 실전에서는 CSV 업로드로 대체됩니다.
+    // ─────────────────────────────────────────────────────────────
+    const SAMPLE_CSV = `순위,게임명,플랫폼,발행일,장르,퍼블리셔,북미 판매량,유럽 판매량,일본 판매량,기타 판매량,글로벌 판매량
+1,Wii 스포츠,닌텐도 Wii,2006,스포츠,닌텐도,41.49,29.02,3.77,8.46,82.74
+2,슈퍼 마리오브라더스,닌텐도S,1985,횡스크롤,닌텐도,29.08,3.58,6.81,0.77,40.24
+3,마리오 카트 Wii,닌텐도 Wii,2008,레이싱,닌텐도,15.85,12.88,3.79,3.31,35.82
+4,Wii 스포츠 리조트,닌텐도 Wii,2009,스포츠,닌텐도,15.75,11.01,3.28,2.96,33
+5,포켓몬 레드/포켓몬 블루,게임보이,1996,롤플레잉,닌텐도,11.27,8.89,10.22,1,31.37
+6,테트리스,게임보이,1989,퍼즐,닌텐도,23.2,2.26,4.22,0.58,30.26
+7,뉴 슈퍼 마리오브라더스,닌텐도 DS,2006,횡스크롤,닌텐도,11.38,9.23,6.5,2.9,30.01
+8,Wii 플레이,닌텐도 Wii,2006,기타,닌텐도,14.03,9.2,2.93,2.85,29.02
+9,뉴 슈퍼 마리오브라더스 Wii,닌텐도 Wii,2009,횡스크롤,닌텐도,14.59,7.06,4.7,2.26,28.62
+10,덕 헌트,닌텐도S,1984,슈팅,닌텐도,26.93,0.63,0.28,0.47,28.31
+11,닌텐독스,닌텐도 DS,2005,시뮬레이션,닌텐도,9.07,11,1.93,2.75,24.76
+12,마리오 카트 DS,닌텐도 DS,2005,레이싱,닌텐도,9.81,7.57,4.13,1.92,23.42
+13,포켓몬 골드/포켓몬 실버,게임보이,1999,롤플레잉,닌텐도,9,6.18,7.2,0.71,23.1
+14,Wii Fit,닌텐도 Wii,2007,스포츠,닌텐도,8.94,8.03,3.6,2.15,22.72
+15,Wii Fit 플러스,닌텐도 Wii,2009,스포츠,닌텐도,9.09,8.59,2.53,1.79,22
+16,키넥트 어드벤처!,Xbox 360,2010,기타,마이크로소프트,14.97,4.94,0.24,1.67,21.82
+17,그랜드 테프트 오토 V,플스3,2013,액션,테이크투,7.01,9.27,0.97,4.14,21.4
+18,그랜드 테프트 오토: 산 안드레아스,플스2,2004,액션,테이크투,9.43,0.4,0.41,10.57,20.81
+19,슈퍼 마리오 월드,슈너 닌텐도S,1990,횡스크롤,닌텐도,12.78,3.75,3.54,0.55,20.61
+20,브레인 에이지: 하루 몇 분 만에 두뇌 훈련하기,닌텐도 DS,2005,기타,닌텐도,4.75,9.26,4.16,2.05,20.22
+21,포켓몬 다이아몬드/포켓몬 펄,닌텐도 DS,2006,롤플레잉,닌텐도,6.42,4.52,6.04,1.37,18.36
+22,슈퍼 마리오 랜드,게임보이,1989,횡스크롤,닌텐도,10.83,2.71,4.18,0.42,18.14
+23,슈퍼 마리오 브라더스 3,닌텐도S,1988,횡스크롤,닌텐도,9.54,3.44,3.84,0.46,17.28
+24,그랜드 테프트 오토 V,Xbox 360,2013,액션,테이크투,9.63,5.31,0.06,1.38,16.38
+25,그랜드 테프트 오토: 바이스 시티,플스2,2002,액션,테이크투,8.41,5.49,0.47,1.78,16.15`;
+
+    // ─────────────────────────────────────────────────────────────
+    // 1) 앱 상태(State) — 초보자도 따라가기 쉬운 단순 구조
+    // ─────────────────────────────────────────────────────────────
+    const state = {
+      raw: [],               // 업로드/샘플에서 파싱한 원본 레코드 배열
+      datasetName: "샘플(Top25)",
+      aggMode: "GAME",       // "GAME" or "PLATFORM"
+      platformMetric: "SALES", // "SALES" or "COUNT"
+      scaleMode: "NORMAL",   // "NORMAL" or "LOG" (TopN y축)
+      filters: {
+        platform: "ALL",
+        genre: "ALL",
+        publisher: "ALL",
+        topN: "25"
+      }
+    };
+
+    // Chart.js 인스턴스를 저장해두고, 리렌더 시 destroy() 하여 중복을 막습니다.
+    const charts = {
+      topN: null,
+      region: null,
+      platform: null,
+      year: null,
+      genreRegion: null
+    };
+
+    // ─────────────────────────────────────────────────────────────
+    // 2) 유틸 함수(숫자/정렬/집계)
+    // ─────────────────────────────────────────────────────────────
+    const toNum = (v) => {
+      if (v === null || v === undefined || v === "") return 0;
+      const n = Number(String(v).trim());
+      return Number.isFinite(n) ? n : 0;
+    };
+
+    const fmt = (n, digits=2) => {
+      // 판매량이 "백만" 단위일 가능성이 크므로, UI는 그대로 표시(숫자만 깔끔히)
+      return Number(n).toLocaleString(undefined, { maximumFractionDigits: digits });
+    };
+
+    const median = (arr) => {
+      if (!arr.length) return 0;
+      const a = [...arr].sort((x,y)=>x-y);
+      const mid = Math.floor(a.length/2);
+      return a.length % 2 ? a[mid] : (a[mid-1] + a[mid]) / 2;
+    };
+
+    // ─────────────────────────────────────────────────────────────
+    // 3) CSV 파싱 및 컬럼 매핑
+    //    - 한글 헤더를 내부 키로 매핑해둬야 차트/필터/인사이트 로직이 안정적입니다.
+    // ─────────────────────────────────────────────────────────────
+    const HEADER_MAP = {
+      "순위": "rank",
+      "게임명": "name",
+      "플랫폼": "platform",
+      "발행일": "year",
+      "장르": "genre",
+      "퍼블리셔": "publisher",
+      "북미 판매량": "na",
+      "유럽 판매량": "eu",
+      "일본 판매량": "jp",
+      "기타 판매량": "other",
+      "글로벌 판매량": "global"
+    };
+
+    function parseCsvToRecords(csvText) {
+      const parsed = Papa.parse(csvText, {
+        header: true,
+        skipEmptyLines: true
+      });
+
+      // PapaParse는 header를 그대로 키로 쓰므로, 여기서 내부 키로 재매핑합니다.
+      const records = parsed.data.map(row => {
+        const r = {};
+        for (const k in row) {
+          const nk = HEADER_MAP[k] ?? k; // 예상 못한 컬럼도 일단 살려둠
+          r[nk] = row[k];
+        }
+
+        return {
+          rank: toNum(r.rank),
+          name: String(r.name ?? "").trim(),
+          platform: String(r.platform ?? "").trim(),
+          year: toNum(r.year),
+          genre: String(r.genre ?? "").trim(),
+          publisher: String(r.publisher ?? "").trim(),
+          na: toNum(r.na),
+          eu: toNum(r.eu),
+          jp: toNum(r.jp),
+          other: toNum(r.other),
+          global: toNum(r.global)
+        };
+      });
+
+      // rank가 없거나 0이면 global 기준으로 재정렬해서 rank를 새로 부여(업로드 파일 유연성)
+      const hasValidRank = records.some(x => x.rank > 0);
+      if (!hasValidRank) {
+        records.sort((a,b)=>b.global - a.global);
+        records.forEach((x,i)=>x.rank = i+1);
+      }
+
+      return records.filter(x => x.name); // 게임명이 비어있는 행 제거
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 4) 집계/필터링: "게임명 합산" vs "플랫폼 분리"
+    // ─────────────────────────────────────────────────────────────
+    function aggregateRecords(raw) {
+      if (state.aggMode === "PLATFORM") {
+        // 플랫폼별 분리 = 원본 그대로 (단, 동일 게임명이라도 별도로 존재 가능)
+        return raw.map(x => ({ ...x, key: `${x.name}__${x.platform}` }));
+      }
+
+      // 게임명 기준 합산: 같은 name을 하나로 묶고 판매량/지역을 합산합니다.
+      // 플랫폼은 "멀티" 등 표시(여기서는 첫 플랫폼을 보관하고 platforms 배열을 따로 둠)
+      const map = new Map();
+      raw.forEach(x => {
+        const key = x.name;
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            rank: x.rank, // 임시
+            name: x.name,
+            platform: x.platform, // 대표표시(첫 등장)
+            platforms: new Set([x.platform]),
+            year: x.year, // 대표 연도(최소/최대 중 선택 가능; 여기선 최소)
+            genre: x.genre,
+            publisher: x.publisher,
+            na: 0, eu: 0, jp: 0, other: 0, global: 0
+          });
+        }
+        const a = map.get(key);
+        a.platforms.add(x.platform);
+        a.year = Math.min(a.year || x.year, x.year || a.year);
+        a.na += x.na; a.eu += x.eu; a.jp += x.jp; a.other += x.other; a.global += x.global;
+      });
+
+      // rank는 글로벌 판매량 기준으로 다시 매깁니다.
+      const arr = Array.from(map.values()).map(x => ({
+        ...x,
+        platform: x.platforms.size > 1 ? `멀티(${x.platforms.size})` : x.platform
+      }));
+      arr.sort((a,b)=>b.global - a.global);
+      arr.forEach((x,i)=>x.rank = i+1);
+      return arr;
+    }
+
+    function applyFilters(records) {
+      const { platform, genre, publisher } = state.filters;
+      let res = records;
+
+      if (platform !== "ALL") res = res.filter(x => x.platform === platform || x.platforms?.has?.(platform));
+      if (genre !== "ALL") res = res.filter(x => x.genre === genre);
+      if (publisher !== "ALL") res = res.filter(x => x.publisher === publisher);
+
+      // Top N 적용 (정렬은 글로벌 판매량 기준)
+      res = [...res].sort((a,b)=>b.global - a.global);
+      const topN = state.filters.topN;
+      if (topN !== "ALL") {
+        res = res.slice(0, Number(topN));
+      }
+
+      return res;
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 5) KPI/요약 계산
+    // ─────────────────────────────────────────────────────────────
+    function computeSummary(records) {
+      const totalGlobal = records.reduce((s,x)=>s + x.global, 0);
+      const globals = records.map(x=>x.global);
+      const med = median(globals);
+
+      const top1 = records.length ? Math.max(...globals) : 0;
+      const top1Share = totalGlobal > 0 ? (top1 / totalGlobal) * 100 : 0;
+
+      // 지역 합계/비중
+      const na = records.reduce((s,x)=>s + x.na, 0);
+      const eu = records.reduce((s,x)=>s + x.eu, 0);
+      const jp = records.reduce((s,x)=>s + x.jp, 0);
+      const other = records.reduce((s,x)=>s + x.other, 0);
+      const totalRegions = na + eu + jp + other;
+
+      const shares = {
+        na: totalRegions ? (na/totalRegions)*100 : 0,
+        eu: totalRegions ? (eu/totalRegions)*100 : 0,
+        jp: totalRegions ? (jp/totalRegions)*100 : 0,
+        other: totalRegions ? (other/totalRegions)*100 : 0
+      };
+
+      // 플랫폼 성과(총판매량 기준) 1위
+      const platformSales = new Map();
+      records.forEach(x=>{
+        const p = x.platform;
+        platformSales.set(p, (platformSales.get(p) || 0) + x.global);
+      });
+      let topPlatform = "-";
+      let topPlatformVal = -Infinity;
+      for (const [p,v] of platformSales.entries()) {
+        if (v > topPlatformVal) { topPlatformVal = v; topPlatform = p; }
+      }
+
+      return { totalGlobal, med, top1Share, shares, topPlatform };
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 6) 차트 데이터 만들기
+    // ─────────────────────────────────────────────────────────────
+    function buildTopNData(records) {
+      const sorted = [...records].sort((a,b)=>b.global - a.global);
+      return {
+        labels: sorted.map(x => state.aggMode === "PLATFORM" ? `${x.name} · ${x.platform}` : x.name),
+        values: sorted.map(x => x.global)
+      };
+    }
+
+    function buildRegionShareData(records) {
+      const na = records.reduce((s,x)=>s + x.na, 0);
+      const eu = records.reduce((s,x)=>s + x.eu, 0);
+      const jp = records.reduce((s,x)=>s + x.jp, 0);
+      const other = records.reduce((s,x)=>s + x.other, 0);
+      return { na, eu, jp, other };
+    }
+
+    function buildPlatformData(records) {
+      const mapSales = new Map();
+      const mapCount = new Map();
+
+      records.forEach(x=>{
+        const p = x.platform;
+        mapSales.set(p, (mapSales.get(p)||0) + x.global);
+        mapCount.set(p, (mapCount.get(p)||0) + 1);
+      });
+
+      const entries = Array.from(mapSales.keys()).map(p => ({
+        platform: p,
+        sales: mapSales.get(p),
+        count: mapCount.get(p)
+      }));
+
+      // metric에 맞게 정렬
+      if (state.platformMetric === "SALES") entries.sort((a,b)=>b.sales - a.sales);
+      else entries.sort((a,b)=>b.count - a.count);
+
+      return {
+        labels: entries.map(x=>x.platform),
+        values: entries.map(x=> state.platformMetric === "SALES" ? x.sales : x.count)
+      };
+    }
+
+    function buildYearScatterData(records) {
+      // 산점도: {x: year, y: global, label: name}
+      return records
+        .filter(x => x.year > 0)
+        .map(x => ({
+          x: x.year,
+          y: x.global,
+          label: state.aggMode === "PLATFORM" ? `${x.name} (${x.platform})` : x.name
+        }));
+    }
+
+    function buildGenreRegionData(records) {
+      // 장르별로 지역 판매량 합산
+      const genreMap = new Map();
+      records.forEach(x=>{
+        const g = x.genre || "기타";
+        if (!genreMap.has(g)) genreMap.set(g, { na:0, eu:0, jp:0, other:0 });
+        const a = genreMap.get(g);
+        a.na += x.na; a.eu += x.eu; a.jp += x.jp; a.other += x.other;
+      });
+
+      // 글로벌 합(=지역합) 기준으로 정렬 후 상위 장르만(너무 많으면 가독성 붕괴)
+      const entries = Array.from(genreMap.entries()).map(([genre, v]) => ({
+        genre,
+        ...v,
+        total: v.na + v.eu + v.jp + v.other
+      })).sort((a,b)=>b.total - a.total);
+
+      // 화면 복잡도 방지: 최대 8개 장르만 노출(필요하면 늘리면 됩니다)
+      const topGenres = entries.slice(0, 8);
+
+      return {
+        labels: topGenres.map(x=>x.genre),
+        na: topGenres.map(x=>x.na),
+        eu: topGenres.map(x=>x.eu),
+        jp: topGenres.map(x=>x.jp),
+        other: topGenres.map(x=>x.other)
+      };
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 7) 인사이트 생성 (원인-현상-영향 + 간단 Outlier)
+    // ─────────────────────────────────────────────────────────────
+    function buildInsights(records) {
+      const insights = [];
+
+      if (!records.length) {
+        return [{
+          title: "데이터가 없습니다",
+          body: "CSV를 업로드하거나 필터를 완화해 주세요."
+        }];
+      }
+
+      const sum = computeSummary(records);
+      const region = buildRegionShareData(records);
+      const totalRegion = region.na + region.eu + region.jp + region.other;
+
+      // 지역 지배(최고 비중 지역)
+      const regionPairs = [
+        ["북미", region.na],
+        ["유럽", region.eu],
+        ["일본", region.jp],
+        ["기타", region.other]
+      ].map(([k,v]) => [k, totalRegion ? (v/totalRegion)*100 : 0])
+       .sort((a,b)=>b[1]-a[1]);
+
+      const [dominantRegion, domShare] = regionPairs[0];
+
+      // Outlier(슈퍼히트): 평균 대비 3배 이상이면 “특이점”으로 간주(간단 룰)
+      const globals = records.map(x=>x.global);
+      const avg = globals.reduce((s,x)=>s+x,0)/globals.length;
+      const top = [...records].sort((a,b)=>b.global-a.global)[0];
+      const isOutlier = avg > 0 && top.global >= avg * 3;
+
+      // 플랫폼 파워
+      const pData = buildPlatformData(records);
+      const topPlatform = pData.labels[0] ?? "-";
+
+      // CEI 1) 지역 전략
+      insights.push({
+        title: "지역 전략: 매출을 끌어올린 핵심 시장",
+        body:
+          `현상: 선택 범위에서 ${dominantRegion} 비중이 ${fmt(domShare,1)}%로 가장 큽니다.\n` +
+          `원인(추정): 해당 지역에서 선호하는 장르/플랫폼 조합이 강하게 작동했을 가능성이 큽니다.\n` +
+          `영향: 다음 런칭/마케팅은 ${dominantRegion} 최적화(언어·가격·유통·장르 포지셔닝)를 우선순위로 두는 것이 합리적입니다.`
+      });
+
+      // CEI 2) 플랫폼 전략
+      insights.push({
+        title: "플랫폼 전략: 유통 채널이 히트를 증폭",
+        body:
+          `현상: 플랫폼 성과 1위는 "${topPlatform}"입니다.\n` +
+          `원인(추정): 설치기반/유통 구조가 강한 플랫폼일수록 히트 타이틀이 더 크게 터질 확률이 올라갑니다.\n` +
+          `영향: 신규 타이틀은 1) 강한 플랫폼 우선 공략 또는 2) 멀티플랫폼 확장(집계 기준 토글로 효과 확인)이 전략적으로 유리합니다.`
+      });
+
+      // CEI 3) 슈퍼히트 집중도
+      insights.push({
+        title: "집중도: 1위가 시장을 얼마나 잡아먹는가",
+        body:
+          `현상: 1위 판매량 비중이 ${fmt(sum.top1Share,1)}%입니다.\n` +
+          `원인(추정): 번들/국민게임/하드웨어 동반 판매 같은 구조가 있을 때 이 값이 커지는 경향이 있습니다.\n` +
+          `영향: 포트폴리오 관점에서 ‘한 방 의존’ 리스크가 커질 수 있으므로, 장르/지역 분산 전략이 필요합니다.`
+      });
+
+      if (isOutlier) {
+        insights.push({
+          title: "특이점(Outlier): 평균을 압도하는 슈퍼히트",
+          body:
+            `현상: "${top.name}"이(가) 평균(${fmt(avg)}) 대비 크게 높습니다(${fmt(top.global)}).\n` +
+            `원인(추정): 지역/플랫폼/번들/브랜드 파워가 동시에 맞물렸을 가능성이 큽니다.\n` +
+            `영향: 이 타이틀의 지역 기여도(도넛)와 플랫폼 조건(집계 토글)을 함께 보며 ‘재현 가능한 요인’만 추출해야 합니다.`
+        });
+      }
+
+      return insights.slice(0, 5); // 너무 길어지지 않게 5개까지만
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 8) Chart.js 렌더 함수들
+    // ─────────────────────────────────────────────────────────────
+    function renderTopNChart(records) {
+      const ctx = document.getElementById("chartTopN");
+      const d = buildTopNData(records);
+
+      if (charts.topN) charts.topN.destroy();
+
+      charts.topN = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: d.labels,
+          datasets: [{ label: "글로벌 판매량", data: d.values }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: state.scaleMode === "LOG" ? "logarithmic" : "linear",
+              title: { display: true, text: "판매량" }
+            },
+            y: {
+              ticks: { autoSkip: true, maxTicksLimit: 12 }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => ` ${fmt(ctx.parsed.x)}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderRegionChart(records) {
+      const ctx = document.getElementById("chartRegionShare");
+      const r = buildRegionShareData(records);
+
+      if (charts.region) charts.region.destroy();
+
+      charts.region = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+          labels: ["북미", "유럽", "일본", "기타"],
+          datasets: [{ data: [r.na, r.eu, r.jp, r.other] }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: (c) => {
+                  const total = c.dataset.data.reduce((s,x)=>s+x,0);
+                  const v = c.raw;
+                  const pct = total ? (v/total)*100 : 0;
+                  return ` ${c.label}: ${fmt(v)} (${fmt(pct,1)}%)`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderPlatformChart(records) {
+      const ctx = document.getElementById("chartPlatform");
+      const d = buildPlatformData(records);
+
+      if (charts.platform) charts.platform.destroy();
+
+      charts.platform = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: d.labels,
+          datasets: [{
+            label: state.platformMetric === "SALES" ? "총 글로벌 판매량" : "타이틀 수",
+            data: d.values
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function renderYearScatter(records) {
+      const ctx = document.getElementById("chartYearScatter");
+      const points = buildYearScatterData(records);
+
+      if (charts.year) charts.year.destroy();
+
+      charts.year = new Chart(ctx, {
+        type: "scatter",
+        data: {
+          datasets: [{
+            label: "연도-판매량",
+            data: points
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          parsing: false,
+          scales: {
+            x: { title: { display: true, text: "발행 연도" }, ticks: { precision: 0 } },
+            y: { title: { display: true, text: "글로벌 판매량" } }
+          },
+          plugins: {
+            tooltip: {
+              callbacks: {
+                label: (c) => {
+                  const p = c.raw;
+                  return ` ${p.label} · ${p.x}년 · ${fmt(p.y)}`;
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function renderGenreRegion(records) {
+      const ctx = document.getElementById("chartGenreRegion");
+      const d = buildGenreRegionData(records);
+
+      if (charts.genreRegion) charts.genreRegion.destroy();
+
+      charts.genreRegion = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: d.labels,
+          datasets: [
+            { label: "북미", data: d.na },
+            { label: "유럽", data: d.eu },
+            { label: "일본", data: d.jp },
+            { label: "기타", data: d.other }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: false },
+            y: { stacked: false, title: { display: true, text: "판매량" } }
+          }
+        }
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 9) UI 업데이트 (KPI/필터 옵션/인사이트)
+    // ─────────────────────────────────────────────────────────────
+    function updateKPI(records) {
+      const s = computeSummary(records);
+
+      document.getElementById("kpiTotalGlobal").textContent = fmt(s.totalGlobal);
+      document.getElementById("kpiMedianGlobal").textContent = fmt(s.med);
+      document.getElementById("kpiTop1Share").textContent = fmt(s.top1Share, 1);
+      document.getElementById("kpiTopPlatform").textContent = s.topPlatform;
+
+      document.getElementById("naShare").textContent = fmt(s.shares.na, 1);
+      document.getElementById("euShare").textContent = fmt(s.shares.eu, 1);
+      document.getElementById("jpShare").textContent = fmt(s.shares.jp, 1);
+      document.getElementById("otherShare").textContent = fmt(s.shares.other, 1);
+    }
+
+    function setSelectOptions(selectEl, values) {
+      // 기존 옵션(ALL 포함)은 유지하고 나머지 재생성
+      const current = selectEl.value;
+      selectEl.innerHTML = `<option value="ALL">전체</option>`;
+      values.forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        selectEl.appendChild(opt);
+      });
+      // 기존 선택값 유지(가능한 경우)
+      if ([...selectEl.options].some(o => o.value === current)) selectEl.value = current;
+      else selectEl.value = "ALL";
+    }
+
+    function rebuildFiltersFromData() {
+      const platforms = Array.from(new Set(state.raw.map(x=>x.platform))).sort();
+      const genres = Array.from(new Set(state.raw.map(x=>x.genre))).sort();
+      const publishers = Array.from(new Set(state.raw.map(x=>x.publisher))).sort();
+
+      setSelectOptions(document.getElementById("platformFilter"), platforms);
+      setSelectOptions(document.getElementById("genreFilter"), genres);
+      setSelectOptions(document.getElementById("publisherFilter"), publishers);
+    }
+
+    function renderInsights(records) {
+      const list = document.getElementById("insightList");
+      list.innerHTML = "";
+
+      const insights = buildInsights(records);
+      insights.forEach(i => {
+        const card = document.createElement("div");
+        card.className = "rounded-2xl border bg-slate-50 p-3";
+        card.innerHTML = `
+          <div class="font-semibold">${escapeHtml(i.title)}</div>
+          <pre class="mt-1 whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">${escapeHtml(i.body)}</pre>
+        `;
+        list.appendChild(card);
+      });
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 10) 전체 렌더 파이프라인 (핵심)
+    //     raw → 집계 → 필터 → KPI/차트/인사이트
+    // ─────────────────────────────────────────────────────────────
+    function renderAll() {
+      const aggregated = aggregateRecords(state.raw);
+      const filtered = applyFilters(aggregated);
+
+      // 화면 상단 rowCount는 "원본 행수"를 표시(전체 데이터 규모)
+      document.getElementById("datasetName").textContent = state.datasetName;
+      document.getElementById("rowCount").textContent = state.raw.length;
+
+      // KPI/요약/차트/인사이트
+      updateKPI(filtered);
+      renderTopNChart(filtered);
+      renderRegionChart(filtered);
+      renderPlatformChart(filtered);
+      renderYearScatter(filtered);
+      renderGenreRegion(filtered);
+      renderInsights(filtered);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 11) 이벤트 바인딩
+    // ─────────────────────────────────────────────────────────────
+    function bindEvents() {
+      // 라디오(집계 기준)
+      document.querySelectorAll('input[name="aggMode"]').forEach(radio => {
+        radio.addEventListener("change", (e) => {
+          state.aggMode = e.target.value;
+          renderAll();
+        });
+      });
+
+      // 필터
+      document.getElementById("platformFilter").addEventListener("change", (e)=>{
+        state.filters.platform = e.target.value;
+        renderAll();
+      });
+      document.getElementById("genreFilter").addEventListener("change", (e)=>{
+        state.filters.genre = e.target.value;
+        renderAll();
+      });
+      document.getElementById("publisherFilter").addEventListener("change", (e)=>{
+        state.filters.publisher = e.target.value;
+        renderAll();
+      });
+      document.getElementById("topN").addEventListener("change", (e)=>{
+        state.filters.topN = e.target.value;
+        renderAll();
+      });
+
+      // 버튼들
+      document.getElementById("scaleToggle").addEventListener("click", ()=>{
+        state.scaleMode = state.scaleMode === "NORMAL" ? "LOG" : "NORMAL";
+        document.getElementById("scaleToggle").textContent =
+          state.scaleMode === "NORMAL" ? "TopN 스케일: 일반" : "TopN 스케일: 로그";
+        renderAll();
+      });
+
+      document.getElementById("platformMetricToggle").addEventListener("click", ()=>{
+        state.platformMetric = state.platformMetric === "SALES" ? "COUNT" : "SALES";
+        document.getElementById("platformMetricToggle").textContent =
+          state.platformMetric === "SALES" ? "플랫폼 성과: 총판매량" : "플랫폼 성과: 타이틀 수";
+        renderAll();
+      });
+
+      document.getElementById("resetFilters").addEventListener("click", ()=>{
+        state.filters.platform = "ALL";
+        state.filters.genre = "ALL";
+        state.filters.publisher = "ALL";
+        state.filters.topN = "25";
+
+        document.getElementById("platformFilter").value = "ALL";
+        document.getElementById("genreFilter").value = "ALL";
+        document.getElementById("publisherFilter").value = "ALL";
+        document.getElementById("topN").value = "25";
+
+        renderAll();
+      });
+
+      // 파일 업로드
+      document.getElementById("fileInput").addEventListener("change", async (e)=>{
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const text = await file.text();
+        const records = parseCsvToRecords(text);
+
+        state.raw = records;
+        state.datasetName = file.name;
+
+        // 업로드 데이터 기준으로 필터 옵션 재구성
+        rebuildFiltersFromData();
+
+        // 기본 필터 초기화 후 렌더
+        document.getElementById("resetFilters").click();
+      });
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // 12) 초기화
+    // ─────────────────────────────────────────────────────────────
+    function init() {
+      lucide.createIcons();
+
+      // 샘플 데이터 로딩
+      state.raw = parseCsvToRecords(SAMPLE_CSV);
+      rebuildFiltersFromData();
+
+      bindEvents();
+      renderAll();
+    }
+
+    init();
+  </script>
+</body>
+</html>
