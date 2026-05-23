@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Capability Master</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#2563EB',
+                        primaryHover: '#1D4ED8',
+                        success: '#10B981',
+                        warning: '#F59E0B',
+                        danger: '#EF4444',
+                        background: '#F8FAFC',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Tailwind Typography/Form base -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .glass-panel {
+                @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-xl;
+            }
+            .btn-primary {
+                @apply w-full bg-primary hover:bg-primaryHover text-white font-semibold py-3 px-4 rounded-xl transition duration-200 transform hover:-translate-y-1 hover:shadow-lg active:scale-95 flex items-center justify-center gap-2;
+            }
+            .btn-secondary {
+                @apply bg-white hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 border border-gray-200 rounded-lg transition duration-200 shadow-sm flex items-center gap-2;
+            }
+            .input-field {
+                @apply w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition transition-shadow;
+            }
+        }
+
+        body { background-color: #F8FAFC; color: #1e293b; overflow-x: hidden; }
+        
+        /* Drag UI interactions */
+        .drag-active { border-color: #2563EB !important; background-color: #EFF6FF !important; }
+        
+        /* Loading Overlay */
+        #loadingOverlay { transition: opacity 0.3s ease; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Libraries CDN -->
+    <!-- SheetJS for Data parsing & ExcelJS for Reporting -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Simple-Statistics -->
+    <script src="https://unpkg.com/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
+
+</head>
+<body class="antialiased flex h-screen overflow-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-3"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/70 backdrop-blur-sm z-[100] hidden items-center justify-center">
+        <div class="flex flex-col items-center">
+            <i class="fa-solid fa-spinner fa-spin text-5xl text-primary mb-4"></i>
+            <p class="text-lg font-semibold text-gray-700 animate-pulse">데이터를 분석하는 중입니다...</p>
+        </div>
+    </div>
+
+    <!-- Sidebar / Settings Panel -->
+    <aside class="w-96 bg-white border-r border-gray-200 h-full flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.02)] z-10 relative">
+        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+            <div class="flex items-center gap-3 text-primary">
+                <i class="fa-solid fa-chart-line text-3xl"></i>
+                <div>
+                    <h1 class="text-xl font-bold text-gray-900 leading-tight" data-i18n="main_title">공정능력 마스터</h1>
+                    <p class="text-xs text-gray-500 font-medium" data-i18n="main_sub">Process Capability Analyzer</p>
+                </div>
+                <div class="ml-auto flex items-center bg-gray-200 rounded-full p-1" style="margin-left: auto;">
+                    <button class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-white shadow-sm text-primary" onclick="setLanguage('ko')" id="btnKo">KO</button>
+                    <button class="px-2 py-0.5 text-[11px] font-bold rounded-full text-gray-500 hover:text-gray-700" onclick="setLanguage('en')" id="btnEn">EN</button>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 mt-4">
+                <button onclick="downloadTemplate()" title="템플릿 엑셀 파일 다운로드" class="flex-1 btn-secondary text-sm">
+                    <i class="fa-solid fa-file-excel text-green-600"></i> <span data-i18n="btn_template_tx">템플릿</span>
+                </button>
+                <button onclick="downloadGuide()" title="마크다운 메뉴얼 다운로드" class="flex-1 btn-secondary text-sm">
+                    <i class="fa-solid fa-book-open text-primary"></i> <span data-i18n="btn_guide_tx">매뉴얼</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-6 space-y-8">
+            <!-- 1. Spec Input -->
+            <section>
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">1</div>
+                    <h2 class="text-lg font-semibold text-gray-800"><span data-i18n="sec_spec">공정 규격 설정</span></h2>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"><span data-i18n="lb_usl">상한 규격 (USL)</span></label>
+                        <input type="number" id="uslInput" class="input-field" placeholder="예: 10.5">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"><span data-i18n="lb_lsl">하한 규격 (LSL)</span></label>
+                        <input type="number" id="lslInput" class="input-field" placeholder="예: 9.5">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1"><span data-i18n="lb_target">목표값 (Target)</span> <span class="text-gray-400 font-normal">(선택)</span></label>
+                        <input type="number" id="targetInput" class="input-field" placeholder="예: 10.0">
+                    </div>
+                    <div class="relative group">
+                        <label class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1 cursor-help">
+                            <span data-i18n="lb_n">군 크기 (n)</span>
+                            <i class="fa-regular fa-circle-question text-gray-400"></i>
+                        </label>
+                        <input type="number" id="subgroupInput" class="input-field" value="1" min="1" max="100">
+                        <div class="absolute bottom-full left-0 mb-2 hidden group-hover:block w-64 bg-gray-900 text-white text-xs rounded-lg p-3 shadow-lg z-20">
+                            미니탭 방식(군내 변동) 계산 시 사용됩니다. 1을 입력하면 이동 범위(n=2 MR)를 사용하며, 2 이상을 입력하면 해당 크기만큼 연속된 데이터를 묶어 Range 평균을 계산합니다.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Data Upload -->
+            <section>
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">2</div>
+                    <h2 class="text-lg font-semibold text-gray-800"><span data-i18n="sec_upload">데이터 업로드</span></h2>
+                </div>
+                
+                <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-gray-50 transition-colors">
+                    <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-400 mb-3 group-hover:text-primary"></i>
+                    <p class="text-sm font-medium text-gray-600"><span data-i18n="dt_drag">엑셀 파일을 여기에 끌어다 놓거나</span></p>
+                    <p class="text-xs text-gray-400 mt-1 mb-4">(.xlsx, .xls 호환)</p>
+                    <button class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition" onclick="document.getElementById('fileInput').click()"><span data-i18n="btn_select_file">파일 선택하기</span></button>
+                    <input type="file" id="fileInput" class="hidden" accept=".xlsx, .xls, .csv">
+                </div>
+                <div id="fileInfo" class="mt-3 text-sm font-medium text-green-600 hidden flex items-center justify-center gap-2 bg-green-50 py-2 rounded-lg border border-green-100">
+                    <i class="fa-solid fa-circle-check"></i> <span id="fileNameDisplay">data.xlsx</span> 업로드 완료
+                </div>
+            </section>
+
+            <!-- 3. Options -->
+            <section>
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">3</div>
+                    <h2 class="text-lg font-semibold text-gray-800"><span data-i18n="sec_option">분석 옵션</span></h2>
+                </div>
+                
+                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                    <div class="space-y-3">
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="chkExcel" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" checked>
+                            <span class="text-sm text-gray-700">Excel 방식 (장기, Overall, STDEV.S) 산출</span>
+                        </label>
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" id="chkMinitab" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary" checked>
+                            <span class="text-sm text-gray-700">Minitab 방식 (단기, Within, R-bar) 산출</span>
+                        </label>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="p-6 border-t border-gray-200 bg-white shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+            <button id="btnAnalyze" class="btn-primary" onclick="runAnalysis()">
+                <i class="fa-solid fa-bolt"></i>
+                <span data-i18n="btn_analyze">분석 시작하기</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content / Dashboard -->
+    <main class="flex-1 overflow-y-auto bg-slate-50 relative">
+        <div id="dashboardEmpty" class="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+            <img src="https://cdn-icons-png.flaticon.com/512/3755/3755251.png" alt="Analytics" class="w-48 opacity-30 drop-shadow-md mb-6 grayscale">
+            <h2 class="text-2xl font-bold text-gray-700 mb-2"><span data-i18n="msg_ready">데이터를 분석할 준비가 완료되었습니다.</span></h2>
+            <p class="text-gray-500 max-w-md mx-auto"><span data-i18n="msg_ready_sub">좌측 패널에서 규격을 설정하고 엑셀 데이터를 업로드한 후 분석을 시작하세요.</span> 정교한 공정능력 결과가 이곳에 표시됩니다.</p>
+        </div>
+
+        <div id="dashboardContent" class="hidden max-w-6xl mx-auto p-8 space-y-8">
+            
+            <!-- Dashboard Header -->
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900"><span data-i18n="summary_title">분석 결과 요약</span></h2>
+                    <p class="text-sm text-gray-500 mt-1"><span data-i18n="summary_cnt">데이터 개수:</span> <span id="dataCountDisplay" class="font-semibold text-gray-700">0</span>개 / 결측치 제외됨</p>
+                </div>
+                <button onclick="exportToExcel()" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg shadow-sm font-semibold text-sm transition flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> <span data-i18n="btn_export">리포트 엑셀 다운로드</span>
+                </button>
+            </div>
+
+            <!-- Summary Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Cp Card -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition text-5xl">
+                        <i class="fa-solid fa-bullseye"></i>
+                    </div>
+                    <span class="text-sm font-bold text-gray-500 mb-1"><span data-i18n="c_cp">단기 공정능력 (잠재력)</span></span>
+                    <h3 class="text-4xl font-black text-gray-800 mb-2 font-mono" id="valCp">-</h3>
+                    <div class="mt-auto">
+                        <span id="badgeCp" class="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">대기중</span>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between text-xs text-gray-500">
+                        <span>Cp (Minitab)</span>
+                        <span title="합동표준편차(Within) 기반">Within <i class="fa-regular fa-circle-question ml-1"></i></span>
+                    </div>
+                </div>
+                
+                <!-- Cpk Card -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition text-5xl">
+                        <i class="fa-solid fa-crosshairs"></i>
+                    </div>
+                    <span class="text-sm font-bold text-gray-500 mb-1"><span data-i18n="c_cpk">단기 공정능력 (치우침)</span></span>
+                    <h3 class="text-4xl font-black text-gray-800 mb-2 font-mono" id="valCpk">-</h3>
+                    <div class="mt-auto">
+                        <span id="badgeCpk" class="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">대기중</span>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between text-xs text-gray-500">
+                        <span>Cpk (Minitab)</span>
+                        <span title="합동표준편차(Within) 기반">Within <i class="fa-regular fa-circle-question ml-1"></i></span>
+                    </div>
+                </div>
+
+                <!-- Pp Card -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition text-5xl">
+                        <i class="fa-solid fa-chart-area"></i>
+                    </div>
+                    <span class="text-sm font-bold text-gray-500 mb-1"><span data-i18n="c_pp">장기 공정능력 (잠재력)</span></span>
+                    <h3 class="text-4xl font-black text-gray-800 mb-2 font-mono" id="valPp">-</h3>
+                    <div class="mt-auto">
+                        <span id="badgePp" class="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">대기중</span>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between text-xs text-gray-500">
+                        <span>Pp (Excel)</span>
+                        <span title="표본표준편차(Overall) 기반">Overall <i class="fa-regular fa-circle-question ml-1"></i></span>
+                    </div>
+                </div>
+
+                <!-- Ppk Card -->
+                <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 flex flex-col relative overflow-hidden group">
+                    <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition text-5xl">
+                        <i class="fa-solid fa-compress"></i>
+                    </div>
+                    <span class="text-sm font-bold text-gray-500 mb-1"><span data-i18n="c_ppk">장기 공정능력 (치우침)</span></span>
+                    <h3 class="text-4xl font-black text-gray-800 mb-2 font-mono" id="valPpk">-</h3>
+                    <div class="mt-auto">
+                        <span id="badgePpk" class="px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-600 border border-gray-200">대기중</span>
+                    </div>
+                    <div class="mt-3 pt-3 border-t border-gray-100 flex justify-between text-xs text-gray-500">
+                        <span>Ppk (Excel)</span>
+                        <span title="표본표준편차(Overall) 기반">Overall <i class="fa-regular fa-circle-question ml-1"></i></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart and Details Section -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Main Chart -->
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-column text-primary"></i> 
+                        데이터 분포 히스토그램 및 정규곡선
+                    </h3>
+                    <div class="flex-1 w-full relative min-h-[400px]">
+                        <canvas id="distChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Stats Details -->
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-0 overflow-hidden flex flex-col">
+                    <div class="p-5 border-b border-gray-100 bg-gray-50">
+                        <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-primary"></i> 
+                            <span data-i18n="th_dtl">상세 통계량</span>
+                        </h3>
+                    </div>
+                    <div class="p-0 flex-1 overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <tbody>
+                                <tr class="border-b border-gray-50 hover:bg-slate-50 transition">
+                                    <th class="px-6 py-4 font-semibold text-gray-600 bg-white"><span data-i18n="th_mean">평균 (Mean)</span></th>
+                                    <td class="px-6 py-4 text-gray-800 font-mono text-right" id="dtMean">-</td>
+                                </tr>
+                                <tr class="border-b border-gray-50 hover:bg-slate-50 transition">
+                                    <th class="px-6 py-4 font-semibold text-gray-600 bg-white"><span data-i18n="th_usl">상한 규격 (USL)</span></th>
+                                    <td class="px-6 py-4 text-gray-800 font-mono text-right" id="dtUsl">-</td>
+                                </tr>
+                                <tr class="border-b border-gray-50 hover:bg-slate-50 transition">
+                                    <th class="px-6 py-4 font-semibold text-gray-600 bg-white"><span data-i18n="th_lsl">하한 규격 (LSL)</span></th>
+                                    <td class="px-6 py-4 text-gray-800 font-mono text-right" id="dtLsl">-</td>
+                                </tr>
+                                <tr class="border-b border-gray-50 hover:bg-slate-50 transition">
+                                    <th class="px-6 py-4 font-semibold text-gray-600 bg-white"><span data-i18n="lb_target">목표값 (Target)</span></th>
+                                    <td class="px-6 py-4 text-gray-800 font-mono text-right" id="dtTarget">-</td>
+                                </tr>
+                                <tr class="border-b border-gray-50 hover:bg-slate-50 transition">
+                                    <th class="px-6 py-4 font-semibold text-gray-600 bg-white"><span data-i18n="th_max">최대 (Max)</span></th>
+                                    <td class="px-6 py-4 text-gray-800 font-mono text-right" id="dtMax">-</td>
+                                </tr>
+                                <tr class="border-b border-gray-50 hover:bg-slate-50 transition">
+                                    <th class="px-6 py-4 font-semibold text-gray-600 bg-white"><span data-i18n="th_min">최소 (Min)</span></th>
+                                    <td class="px-6 py-4 text-gray-800 font-mono text-right" id="dtMin">-</td>
+                                </tr>
+                                <tr class="border-b border-gray-50 hover:bg-slate-50 transition bg-blue-50/30">
+                                    <th class="px-6 py-4 font-semibold text-blue-800">표준편차 (Overall)</th>
+                                    <td class="px-6 py-4 text-blue-900 font-mono text-right" id="dtSdOverall">-</td>
+                                </tr>
+                                <tr class="border-b border-gray-50 hover:bg-slate-50 transition bg-green-50/30">
+                                    <th class="px-6 py-4 font-semibold text-green-800">합동표준편차 (Within)</th>
+                                    <td class="px-6 py-4 text-green-900 font-mono text-right" id="dtSdWithin">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center text-xs text-gray-400 mt-8 pb-8">
+                &copy; Process Capability Master - Advanced Agentic Solution
+            </div>
+        </div>
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        
+        // --- I18N Language System ---
+        const i18n = {
+            en: {
+                main_title: "Proc. Cap. Master", main_sub: "Process Capability Analyzer",
+                btn_template_tx: "Template", btn_guide_tx: "Manual",
+                sec_spec: "Process Specs", lb_usl: "Upper Spec Limit (USL)", lb_lsl: "Lower Spec Limit (LSL)", 
+                lb_target: "Target (Optional)", lb_n: "Subgroup Size (n)", sec_upload: "Data Upload",
+                dt_drag: "Drag and drop Excel here", btn_select_file: "Select File",
+                sec_option: "Analysis Options", btn_analyze: "Start Analysis",
+                msg_ready: "Ready for Analysis.", msg_ready_sub: "Set specs and upload data left side to begin.",
+                summary_title: "Analysis Summary", summary_cnt: "Data Count:",
+                c_cp: "Short-term Potential", c_cpk: "Short-term Performance",
+                c_pp: "Long-term Potential", c_ppk: "Long-term Performance", btn_export: "Export to Excel",
+                th_dtl: "Detailed Stats", th_mean: "Mean", th_usl: "USL", th_lsl: "LSL", th_max: "Max", th_min: "Min",
+                th_sdov: "Overall SD", th_sdwi: "Within SD", 
+                guide_title: "Process Capability Manual", guide_h1: "1. Overview", guide_h2: "2. How to Use", guide_h3: "3. Status Criteria",
+                guide_d1: "<b>Excel Method:</b> Uses STDEV.S for overall long-term variation to get Pp, Ppk.",
+                guide_d2: "<b>Minitab Method:</b> Uses d2 table for short-term subgroup variation to get Cp, Cpk.",
+                guide_d3: "<b>Inputs:</b> Enter USL/LSL. Customize Subgroup (n).",
+                guide_d4: "<b>Upload:</b> Drop an Excel file like the template.",
+                guide_d5: "<b>Analyze:</b> Click Start Analysis to view dashboard.",
+                guide_d6: "<b>Report:</b> Export results to an Excel report.",
+                status_exc: "Excellent", status_good: "Good", status_fair: "Fair", status_poor: "Poor", btn_close_modal: "Close"
+            },
+            ko: {
+                main_title: "공정능력 마스터", main_sub: "Process Capability Analyzer",
+                btn_template_tx: "템플릿", btn_guide_tx: "매뉴얼",
+                sec_spec: "공정 규격 설정", lb_usl: "상한 규격 (USL)", lb_lsl: "하한 규격 (LSL)",
+                lb_target: "목표값 (Target)", lb_n: "군 크기 (n)", sec_upload: "데이터 업로드",
+                dt_drag: "엑셀 파일을 여기에 끌어다 놓거나", btn_select_file: "파일 선택하기",
+                sec_option: "분석 옵션", btn_analyze: "분석 시작하기",
+                msg_ready: "데이터를 분석할 준비가 완료되었습니다.", msg_ready_sub: "좌측에서 설정 및 파일 업로드 후 시작하세요.",
+                summary_title: "분석 결과 요약", summary_cnt: "데이터 개수:",
+                c_cp: "단기 공정능력 (잠재력)", c_cpk: "단기 공정능력 (치우침)",
+                c_pp: "장기 공정능력 (잠재력)", c_ppk: "장기 공정능력 (치우침)", btn_export: "리포트 엑셀 다운로드",
+                th_dtl: "상세 통계량", th_mean: "평균 (Mean)", th_usl: "상한 규격 (USL)", th_lsl: "하한 규격 (LSL)", th_max: "최대 (Max)", th_min: "최소 (Min)",
+                th_sdov: "표준편차 (Overall)", th_sdwi: "합동표준편차 (Within)",
+                guide_title: "공정능력 마스터 매뉴얼", guide_h1: "1. 개요", guide_h2: "2. 사용방법", guide_h3: "3. 판정 기준",
+                guide_d1: "<b>Excel 방식:</b> 표본 표준편차 (STDEV.S) 함수를 기반으로 전체 장기적 산포를 분석.",
+                guide_d2: "<b>Minitab 방식:</b> d2 계수표(군내 변동)를 기반으로 부분군의 단기 잠재력을 분석.",
+                guide_d3: "<b>규격 입력:</b> 상한(USL), 하한(LSL)을 입력.",
+                guide_d4: "<b>데이터 업로드:</b> 템플릿과 동일한 형태의 엑셀 파일(.xlsx)을 업로드합니다.",
+                guide_d5: "<b>분석 시작:</b> 파란색 [분석 시작하기] 버튼 클릭.",
+                guide_d6: "<b>리포트 다운로드:</b> 엑셀 리포트 버튼을 통해 결과를 출력.",
+                status_exc: "우수", status_good: "양호", status_fair: "보통", status_poor: "부족", btn_close_modal: "닫기"
+            }
+        };
+
+        let currentLang = 'ko';
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                let key = el.getAttribute('data-i18n');
+                if(i18n[lang][key]) {
+                    el.innerHTML = i18n[lang][key];
+                }
+            });
+            let btnKo = document.getElementById('btnKo');
+            let btnEn = document.getElementById('btnEn');
+            if(lang === 'ko') {
+                btnKo.className = "px-2 py-0.5 text-[11px] font-bold rounded-full bg-white shadow-sm text-primary";
+                btnEn.className = "px-2 py-0.5 text-[11px] font-bold rounded-full text-gray-500 hover:text-gray-700";
+            } else {
+                btnEn.className = "px-2 py-0.5 text-[11px] font-bold rounded-full bg-white shadow-sm text-primary";
+                btnKo.className = "px-2 py-0.5 text-[11px] font-bold rounded-full text-gray-500 hover:text-gray-700";
+            }
+            if(statsResult) updateDashboardInputs();
+        }
+
+        // --- 1. Global State Variables ---
+        let rawData = [];
+        let parsedData = []; // Only numeric values
+        let statsResult = null;
+        let chartInstance = null;
+
+        // Constants - d2 table for Subgroup sizes n=2 to n=25
+        const d2Table = {
+            2: 1.128, 3: 1.693, 4: 2.059, 5: 2.326, 6: 2.534, 7: 2.704, 8: 2.847, 9: 2.970, 10: 3.078,
+            11: 3.173, 12: 3.258, 13: 3.336, 14: 3.407, 15: 3.472, 16: 3.532, 17: 3.588, 18: 3.640,
+            19: 3.689, 20: 3.735, 21: 3.778, 22: 3.819, 23: 3.858, 24: 3.895, 25: 3.931
+        };
+
+        // --- 2. Utility Functions (Toast & Loading) ---
+        function showToast(message, type = 'error') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            
+            let icon = type === 'error' ? '<i class="fa-solid fa-circle-exclamation mr-2 text-xl"></i>' : '<i class="fa-solid fa-circle-check mr-2 text-xl"></i>';
+            let bgClass = type === 'error' ? 'bg-danger/90 border-danger' : 'bg-success/90 border-success';
+            
+            toast.className = `flex items-center p-4 mb-2 text-white shadow-xl rounded-xl border-l-4 ${bgClass} transform transition-all duration-300 translate-x-full opacity-0 backdrop-blur-md`;
+            toast.innerHTML = `${icon} <span class="font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Trigger animation in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            }, 10);
+
+            // Animate out and remove after 4 seconds
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        function toggleLoading(show) {
+            const loader = document.getElementById('loadingOverlay');
+            if(show) {
+                loader.classList.remove('hidden');
+                loader.classList.add('flex');
+            } else {
+                loader.classList.add('hidden');
+                loader.classList.remove('flex');
+            }
+        }
+
+        // --- 3. File Input & Drag and Drop Logic ---
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+
+        dropZone.addEventListener('click', (e) => {
+            if(e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT') {
+                fileInput.click();
+            }
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-active');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-active');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-active');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFileUpload(e.target.files[0]);
+            }
+        });
+
+        function handleFileUpload(file) {
+            const validExts = ['.xlsx', '.xls', '.csv'];
+            const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            
+            if (!validExts.includes(fileExt)) {
+                showToast("엑셀 파일(.xlsx, .xls) 또는 CSV 파일만 업로드 가능합니다.");
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    
+                    // Parse as Array of Arrays
+                    const jsonArr = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                    
+                    // Smart parser: Find specific columns
+                    let valColIdx = -1;
+                    if(jsonArr.length > 0) {
+                        for(let j = 0; j < jsonArr[0].length; j++) {
+                            let head = String(jsonArr[0][j] || "").toLowerCase();
+                            if(head.includes("value") || head.includes("데이터") || head.includes("측정")) {
+                                valColIdx = j;
+                            }
+                        }
+                    }
+                    let numbers = [];
+                    for(let i = 1; i < jsonArr.length; i++) { // 헤더 스킵
+                        if(jsonArr[i].length === 0) continue;
+                        let val;
+                        if(valColIdx >= 0) {
+                            val = jsonArr[i][valColIdx];
+                        } else {
+                            // 명확한 헤더가 없으면 마지막 텍스트/숫자 열 사용
+                            val = jsonArr[i][jsonArr[i].length - 1]; 
+                        }
+                        if(typeof val === 'string' && val.includes('(')) continue; // 설명용 행 무시
+                        let parsed = parseFloat(val);
+                        if(!isNaN(parsed)) {
+                            numbers.push(parsed);
+                        }
+                    }
+                    
+                    if (numbers.length < 2) {
+                        showToast(`유효한 숫자 데이터가 부족합니다! (현재: ${numbers.length}개) 최소 2개 이상 필요.`);
+                        return;
+                    }
+
+                    rawData = numbers;
+                    document.getElementById('fileNameDisplay').textContent = file.name;
+                    document.getElementById('fileInfo').classList.remove('hidden');
+                    showToast(`${numbers.length}개의 데이터를 성공적으로 로드했습니다.`, "success");
+                    
+                } catch (err) {
+                    console.error(err);
+                    showToast("엑셀 파일 파싱 중 오류가 발생했습니다.");
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- 4. Main Statistical Analysis Logic ---
+        function calculateR_Bar(data, n) {
+            if (n === 1) {
+                // Moving Range (MR)
+                if (data.length < 2) return null;
+                let sumMR = 0;
+                for (let i = 1; i < data.length; i++) {
+                    sumMR += Math.abs(data[i] - data[i-1]);
+                }
+                return sumMR / (data.length - 1);
+            } else {
+                // Grouping by Subgroup size
+                let ranges = [];
+                for (let i = 0; i < data.length; i += n) {
+                    let subgroup = data.slice(i, i + n);
+                    if (subgroup.length === n) {
+                        let min = Math.min(...subgroup);
+                        let max = Math.max(...subgroup);
+                        ranges.push(max - min);
+                    }
+                }
+                if (ranges.length === 0) return null;
+                let sumR = ranges.reduce((a, b) => a + b, 0);
+                return sumR / ranges.length;
+            }
+        }
+
+        function runAnalysis() {
+            // Validation
+            let uslStr = document.getElementById('uslInput').value;
+            let lslStr = document.getElementById('lslInput').value;
+            let targetStr = document.getElementById('targetInput').value;
+            let nStr = document.getElementById('subgroupInput').value;
+
+            if (!uslStr || !lslStr) {
+                showToast("규격치(USL, LSL)를 입력해주세요.");
+                return;
+            }
+
+            let USL = parseFloat(uslStr);
+            let LSL = parseFloat(lslStr);
+            let Target = targetStr ? parseFloat(targetStr) : null;
+            let n = parseInt(nStr) || 1;
+
+            if (USL <= LSL) {
+                showToast("상한 규격(USL)은 하한 규격(LSL)보다 커야합니다.");
+                return;
+            }
+
+            if (rawData.length < 2) {
+                showToast("분석할 데이터가 없습니다. 엑셀 파일을 업로드해 주세요.");
+                return;
+            }
+
+            toggleLoading(true);
+
+            // Fake async to allow UI render
+            setTimeout(() => {
+                try {
+                    let data = rawData;
+                    
+                    // Basic Stats
+                    let mean = ss.mean(data);
+                    let max = ss.max(data);
+                    let min = ss.min(data);
+                    
+                    // 1. Overall Standard Deviation (Excel STDEV.S)
+                    let sdOverall = ss.sampleStandardDeviation(data);
+                    
+                    // 2. Within Standard Deviation (Minitab Pooled/R-bar)
+                    let rBar = calculateR_Bar(data, n);
+                    let effectiveN = n === 1 ? 2 : n; // For MR, n=2 for d2 table
+                    let d2 = d2Table[effectiveN] || ss.sampleStandardDeviation(data); // fallback if n>25
+                    let sdWithin = rBar !== null && d2Table[effectiveN] ? (rBar / d2) : sdOverall; // Fallback to overall if undefined
+
+                    // Cap/Pp calculations
+                    let Cp = null, Cpk = null, CpkUpper = null, CpkLower = null;
+                    let Pp = null, Ppk = null, PpkUpper = null, PpkLower = null;
+
+                    // Minitab Logic (Within) -> Cp, Cpk
+                    if (sdWithin > 0) {
+                        Cp = (USL - LSL) / (6 * sdWithin);
+                        CpkUpper = (USL - mean) / (3 * sdWithin);
+                        CpkLower = (mean - LSL) / (3 * sdWithin);
+                        Cpk = Math.min(CpkUpper, CpkLower);
+                    }
+
+                    // Excel Logic (Overall) -> Pp, Ppk
+                    if (sdOverall > 0) {
+                        Pp = (USL - LSL) / (6 * sdOverall);
+                        PpkUpper = (USL - mean) / (3 * sdOverall);
+                        PpkLower = (mean - LSL) / (3 * sdOverall);
+                        Ppk = Math.min(PpkUpper, PpkLower);
+                    }
+
+                    statsResult = {
+                        dataCount: data.length,
+                        mean, max, min, Target, USL, LSL,
+                        sdOverall, sdWithin,
+                        Cp, Cpk, Pp, Ppk
+                    };
+
+                    updateDashboardInputs();
+                    drawCharts();
+                    
+                    document.getElementById('dashboardEmpty').classList.add('hidden');
+                    document.getElementById('dashboardContent').classList.remove('hidden');
+
+                } catch (e) {
+                    console.error(e);
+                    showToast("계산 중 오류가 발생했습니다. 데이터 형식을 확인해주세요.");
+                } finally {
+                    toggleLoading(false);
+                }
+            }, 600);
+        }
+
+        // --- 5. UI Updates & Rendering ---
+        function getStatusInfo(val) {
+            if(val === null || isNaN(val)) return {text: currentLang === 'ko' ? "계산불가" : "N/A", colorClass: "bg-gray-100 text-gray-500 border-gray-200"};
+            if (val >= 1.67) return {text: i18n[currentLang].status_exc, colorClass: "bg-green-100 text-green-700 border-green-200"};
+            if (val >= 1.33) return {text: i18n[currentLang].status_good, colorClass: "bg-blue-100 text-blue-700 border-blue-200"};
+            if (val >= 1.00) return {text: i18n[currentLang].status_fair, colorClass: "bg-yellow-100 text-yellow-700 border-yellow-200"};
+            return {text: i18n[currentLang].status_poor, colorClass: "bg-red-100 text-red-700 border-red-200"};
+        }
+
+        function applyValueAndStatus(valId, badgeId, value, chkId) {
+            const elVal = document.getElementById(valId);
+            const elBadge = document.getElementById(badgeId);
+            const isChecked = document.getElementById(chkId).checked;
+
+            if(!isChecked) {
+                elVal.textContent = "N/A";
+                elVal.className = "text-4xl font-black text-gray-300 mb-2 font-mono";
+                elBadge.innerHTML = "제외됨";
+                elBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-gray-100 text-gray-400 border border-gray-200";
+                return;
+            }
+
+            if (value !== null && !isNaN(value)) {
+                elVal.textContent = value.toFixed(3);
+                elVal.className = "text-4xl font-black text-gray-800 mb-2 font-mono";
+                let status = getStatusInfo(value);
+                elBadge.innerHTML = status.text;
+                elBadge.className = `px-3 py-1 rounded-full text-xs font-bold border ${status.colorClass}`;
+            } else {
+                elVal.textContent = "-";
+            }
+        }
+
+        function updateDashboardInputs() {
+            let res = statsResult;
+            document.getElementById('dataCountDisplay').textContent = res.dataCount;
+            
+            // Format numbers helper
+            const numStr = (v) => v !== null && !isNaN(v) ? v.toFixed(4) : '-';
+
+            applyValueAndStatus('valCp', 'badgeCp', res.Cp, 'chkMinitab');
+            applyValueAndStatus('valCpk', 'badgeCpk', res.Cpk, 'chkMinitab');
+            applyValueAndStatus('valPp', 'badgePp', res.Pp, 'chkExcel');
+            applyValueAndStatus('valPpk', 'badgePpk', res.Ppk, 'chkExcel');
+
+            document.getElementById('dtMean').textContent = numStr(res.mean);
+            document.getElementById('dtUsl').textContent = numStr(res.USL);
+            document.getElementById('dtLsl').textContent = numStr(res.LSL);
+            document.getElementById('dtTarget').textContent = res.Target !== null ? numStr(res.Target) : '-';
+            document.getElementById('dtMax').textContent = numStr(res.max);
+            document.getElementById('dtMin').textContent = numStr(res.min);
+            document.getElementById('dtSdOverall').textContent = numStr(res.sdOverall);
+            document.getElementById('dtSdWithin').textContent = numStr(res.sdWithin);
+        }
+
+        function pdfNormal(x, mu, sigma) {
+            return (1 / (sigma * Math.sqrt(2 * Math.PI))) * Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2));
+        }
+
+        function drawCharts() {
+            if(chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('distChart').getContext('2d');
+            const data = rawData;
+            const res = statsResult;
+
+            // 1. Calculate Histogram Bins (Sturges' formula approximation)
+            let k = Math.ceil(1 + 3.322 * Math.log10(data.length));
+            // Ensure reasonable number of bins
+            if (k < 5) k = 5; if (k > 20) k = 20;
+            
+            let minVal = Math.min(...data, res.LSL);
+            let maxVal = Math.max(...data, res.USL);
+            // Add padding to range
+            let pad = (maxVal - minVal) * 0.1;
+            minVal -= pad; maxVal += pad;
+            
+            let binWidth = (maxVal - minVal) / k;
+            
+            let bins = Array(k).fill(0);
+            let binCenters = [];
+            for (let i=0; i<k; i++) {
+                binCenters.push(minVal + (i+0.5)*binWidth);
+            }
+
+            data.forEach(val => {
+                let idx = Math.floor((val - minVal) / binWidth);
+                if (idx >= k) idx = k - 1;
+                if (idx < 0) idx = 0;
+                bins[idx]++;
+            });
+
+            // Calculate Normal Curve data
+            let curveDataX = [];
+            let curveDataYOverall = [];
+            let curveDataYWithin = [];
+            
+            let scaleFactor = data.length * binWidth; // Area under histogram
+
+            for(let i=0; i<=100; i++){
+                let x = minVal + (maxVal - minVal)*(i/100);
+                curveDataX.push(x);
+                let y1 = pdfNormal(x, res.mean, res.sdOverall) * scaleFactor;
+                curveDataYOverall.push({x: x, y: y1});
+                
+                let y2 = pdfNormal(x, res.mean, res.sdWithin) * scaleFactor;
+                curveDataYWithin.push({x: x, y: y2});
+            }
+
+            // Map histogram bins to points for bar chart (Chart.js scatter/bar mixed config)
+            let chartLabels = binCenters.map(v => v.toFixed(3));
+
+            const annotations = {
+                LSL: {
+                    type: 'line', scaleID: 'x', value: res.LSL, borderColor: 'red', borderWidth: 2, borderDash: [5,5],
+                    label: {content: 'LSL', display: true, position: 'top', backgroundColor: 'rgba(239, 68, 68, 0.8)'}
+                },
+                USL: {
+                    type: 'line', scaleID: 'x', value: res.USL, borderColor: 'red', borderWidth: 2, borderDash: [5,5],
+                    label: {content: 'USL', display: true, position: 'top', backgroundColor: 'rgba(239, 68, 68, 0.8)'}
+                },
+                Mean: {
+                    type: 'line', scaleID: 'x', value: res.mean, borderColor: '#2563EB', borderWidth: 2,
+                    label: {content: 'Mean', display: false}
+                }
+            };
+            if(res.Target !== null) {
+                annotations.Target = {
+                    type: 'line', scaleID: 'x', value: res.Target, borderColor: '#10B981', borderWidth: 2, borderDash: [2,2],
+                    label: {content: 'Target', display: true, position: 'center', backgroundColor: 'rgba(16, 185, 129, 0.8)'}
+                }
+            }
+
+            // We use a custom plugin for vertical lines since annotation plugin isn't loaded via standalone script easily without extra CDN.
+            // So we just draw it using normal chart tricks or inline plugin.
+            const verticalLinePlugin = {
+                id: 'verticalLines',
+                afterDraw: (chart) => {
+                    const ctx = chart.ctx;
+                    const xAxis = chart.scales.x;
+                    const yAxis = chart.scales.y;
+                    
+                    const drawLine = (val, color, text, dash=[]) => {
+                        let x = xAxis.getPixelForValue(val);
+                        if(x >= xAxis.left && x <= xAxis.right) {
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.moveTo(x, yAxis.top);
+                            ctx.lineTo(x, yAxis.bottom);
+                            ctx.lineWidth = 2;
+                            ctx.strokeStyle = color;
+                            ctx.setLineDash(dash);
+                            ctx.stroke();
+                            
+                            ctx.fillStyle = color;
+                            ctx.font = 'bold 12px Inter, sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(text, x, yAxis.top - 5);
+                            ctx.restore();
+                        }
+                    }
+
+                    drawLine(res.LSL, '#EF4444', 'LSL', [5,5]);
+                    drawLine(res.USL, '#EF4444', 'USL', [5,5]);
+                    drawLine(res.mean, '#2563EB', 'Mean', []);
+                    if(res.Target !== null) drawLine(res.Target, '#10B981', 'Target', [2,2]);
+                }
+            };
+
+            let datasets = [];
+            
+            // 1. Histogram Bar Dataset
+            datasets.push({
+                type: 'bar',
+                label: '빈도 (Frequency)',
+                data: bins,
+                backgroundColor: 'rgba(59, 130, 246, 0.4)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1,
+                barPercentage: 1.0,
+                categoryPercentage: 1.0,
+                order: 3
+            });
+
+            // 2. Normal Curve (Overall) - if Excel checked
+            if(document.getElementById('chkExcel').checked) {
+                // Must map curveData to fit the labels grid, but Chart.js makes mixed charts tricky if X axis is categorical.
+                // We will use linear X scale with bubble/scatter trick or just scatter line for curves.
+            }
+
+            // Wait, for mixed charts with real X coordinates (histogram + pdf curve), 
+            // the best way in Chart.js is to use 'scatter' type with showLine: true, and 'bar' type.
+            // X axis must be type: 'linear'.
+            
+            let barDataMap = binCenters.map((x, i) => ({x: x, y: bins[i]}));
+
+            chartInstance = new Chart(ctx, {
+                type: 'scatter', // Base type
+                data: {
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: '빈도(Frequency)',
+                            data: barDataMap,
+                            backgroundColor: 'rgba(59, 130, 246, 0.4)',
+                            borderColor: 'rgba(59, 130, 246, 1)',
+                            borderWidth: 1,
+                            barPercentage: 1.0,
+                            categoryPercentage: 1.0,
+                            order: 3
+                        },
+                        {
+                            type: 'line',
+                            label: '정규분포 (Overall/Excel)',
+                            data: curveDataYOverall,
+                            borderColor: '#8B5CF6',
+                            borderWidth: 2,
+                            borderDash: [5,5],
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.4,
+                            hidden: !document.getElementById('chkExcel').checked,
+                            order: 1
+                        },
+                        {
+                            type: 'line',
+                            label: '정규분포 (Within/Minitab)',
+                            data: curveDataYWithin,
+                            borderColor: '#10B981',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.4,
+                            hidden: !document.getElementById('chkMinitab').checked,
+                            order: 2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: { padding: { top: 20 } },
+                    scales: {
+                        x: {
+                            type: 'linear', position: 'bottom',
+                            title: { display: true, text: '측정값 (Measurement Value)' },
+                            // offset: true // helps bars align with grid
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: '빈도 / 분포 밀도' }
+                        }
+                    },
+                    plugins: {
+                        tooltip: { mode: 'index', intersect: false },
+                        legend: { position: 'bottom' }
+                    }
+                },
+                plugins: [verticalLinePlugin]
+            });
+        }
+
+        // --- 6. Export Functions ---
+        async function exportToExcel() {
+            if (!statsResult) {
+                showToast("출력할 데이터가 없습니다.");
+                return;
+            }
+            
+            toggleLoading(true);
+            setTimeout(async () => {
+                try {
+                    let res = statsResult;
+                    const cMinitab = document.getElementById('chkMinitab').checked;
+                    const cExcel = document.getElementById('chkExcel').checked;
+                    
+                    const wb = new ExcelJS.Workbook();
+                    const ws = wb.addWorksheet('Capability Report', { properties: { tabColor: { argb: 'FFC0000' } } });
+                    
+                    ws.columns = [
+                        { width: 3 }, // A
+                        { width: 25 }, // B
+                        { width: 12 }, // C
+                        { width: 12 }, // D
+                        { width: 15 }, // E
+                        { width: 10 }, // F
+                        { width: 10 }, // G
+                        { width: 10 }, // H
+                        { width: 10 }, // I
+                        { width: 10 }, // J
+                        { width: 10 }, // K
+                    ];
+
+                    const borderThin = { style: 'thin', color: { argb: 'FFBFBFBF' } };
+                    const borderStyle = { top: borderThin, left: borderThin, bottom: borderThin, right: borderThin };
+
+                    ws.getCell('B1').value = '■ 공정능력지수 시뮬레이션 결과 리포트';
+                    ws.getCell('B1').font = { name: '맑은 고딕', size: 16, bold: true, color: { argb: 'FF0033CC' } };
+                    
+                    ws.getCell('B3').value = '▶ 분석 요약';
+                    ws.getCell('B3').font = { name: '맑은 고딕', size: 12, bold: true };
+                    
+                    const summaryData = [
+                        ['데이터 수', res.dataCount],
+                        ['상한 규격 (USL)', res.USL],
+                        ['하한 규격 (LSL)', res.LSL],
+                        ['<span data-i18n="lb_target">목표값 (Target)</span>', res.Target !== null ? res.Target : ''],
+                        ['최대값', res.max],
+                        ['최소값', res.min],
+                        ['평균', Number(res.mean.toFixed(6))]
+                    ];
+                    
+                    let rowOffset = 4;
+                    summaryData.forEach((row, i) => {
+                        let r = rowOffset + i;
+                        let b = ws.getCell(`B${r}`);
+                        let c = ws.getCell(`C${r}`);
+                        b.value = row[0]; b.border = borderStyle; b.font = { name:'맑은 고딕', size:10 };
+                        c.value = row[1]; c.border = borderStyle; c.alignment = { horizontal: 'right' }; c.font = { name:'맑은 고딕', size:10 };
+                    });
+
+                    rowOffset += summaryData.length + 1;
+                    ws.getCell(`B${rowOffset}`).value = '▶ 표준편차';
+                    ws.getCell(`B${rowOffset}`).font = { name: '맑은 고딕', size: 12, bold: true };
+                    
+                    rowOffset++;
+                    const sdData = [
+                        ['전체 (Overall / STDEV.S)', Number(res.sdOverall.toFixed(6))],
+                        ['군내 (Within / R-bar/d2)', Number(res.sdWithin.toFixed(6))]
+                    ];
+                    sdData.forEach((row, i) => {
+                        let r = rowOffset + i;
+                        let b = ws.getCell(`B${r}`);
+                        let c = ws.getCell(`C${r}`);
+                        b.value = row[0]; b.border = borderStyle; b.font = { name:'맑은 고딕', size:10 };
+                        c.value = row[1]; c.border = borderStyle; c.alignment = { horizontal: 'right' }; c.font = { name:'맑은 고딕', size:10 };
+                    });
+
+                    rowOffset += sdData.length + 1;
+                    ws.getCell(`B${rowOffset}`).value = '▶ 분석 결과';
+                    ws.getCell(`B${rowOffset}`).font = { name: '맑은 고딕', size: 12, bold: true };
+                    
+                    rowOffset++;
+                    ['B','C','D','E'].forEach((col, i) => {
+                        let cell = ws.getCell(`${col}${rowOffset}`);
+                        cell.value = ['지표', '산출값', '판정', '방식'][i];
+                        cell.font = { name:'맑은 고딕', size:10, color: { argb: 'FFFFFFFF' }, bold: true };
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F497D' } };
+                        cell.border = borderStyle;
+                        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                    });
+                    
+                    let resultRows = [];
+                    if(cMinitab) {
+                        resultRows.push(['Cp', Number(res.Cp.toFixed(3)), getStatusInfo(res.Cp).text, '단기/Minitab']);
+                        resultRows.push(['Cpk', Number(res.Cpk.toFixed(3)), getStatusInfo(res.Cpk).text, '단기/Minitab']);
+                    }
+                    if(cExcel) {
+                        resultRows.push(['Pp', Number(res.Pp.toFixed(3)), getStatusInfo(res.Pp).text, '장기/Excel']);
+                        resultRows.push(['Ppk', Number(res.Ppk.toFixed(3)), getStatusInfo(res.Ppk).text, '장기/Excel']);
+                    }
+                    
+                    resultRows.forEach((row, idx) => {
+                        let r = rowOffset + 1 + idx;
+                        row.forEach((val, i) => {
+                            let cell = ws.getCell(`${['B','C','D','E'][i]}${r}`);
+                            cell.value = val;
+                            cell.border = borderStyle;
+                            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+                            cell.font = { name:'맑은 고딕', size:10 };
+                        });
+                    });
+
+                    rowOffset += resultRows.length + 2;
+                    ws.getCell(`B${rowOffset}`).value = '▶ 원본 측정 데이터 (Raw Data)';
+                    ws.getCell(`B${rowOffset}`).font = { name: '맑은 고딕', size: 12, bold: true };
+                    
+                    rowOffset++;
+                    let currRowOffset = rowOffset;
+                    const cols = ['B','C','D','E','F','G','H','I','J','K'];
+                    
+                    rawData.forEach((val, idx) => {
+                        let c = cols[idx % 10];
+                        let r = currRowOffset + Math.floor(idx / 10);
+                        let cell = ws.getCell(`${c}${r}`);
+                        cell.value = val;
+                        cell.alignment = { horizontal: 'center' };
+                        cell.font = { name:'맑은 고딕', size:10 };
+                    });
+
+                    // Insert Chart Title
+                    ws.getCell('F3').value = '📊 데이터 분포 히스토그램 및 정규곡선';
+                    ws.getCell('F3').font = { name: '맑은 고딕', size: 11, bold: true };
+
+                    // Adjust canvas background to be white
+                    let chartCanvas = document.getElementById('distChart');
+                    let tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = chartCanvas.width;
+                    tempCanvas.height = chartCanvas.height;
+                    let ctx = tempCanvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+                    ctx.drawImage(chartCanvas, 0, 0);
+                    let imgData = tempCanvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
+
+                    let imageId = wb.addImage({ base64: imgData, extension: 'png' });
+                    ws.addImage(imageId, {
+                        tl: { col: 5, row: 4 }, // F5
+                        ext: { width: 600, height: 400 }
+                    });
+
+                    const buffer = await wb.xlsx.writeBuffer();
+                    saveAs(new Blob([buffer]), "Process_Capability_Report.xlsx");
+                    
+                    showToast("엑셀 보고서 다운로드가 완료되었습니다.", "success");
+                } catch (e) {
+                    console.error(e);
+                    showToast("엑셀 내보내기 중 문제가 발생했습니다.");
+                } finally {
+                    toggleLoading(false);
+                }
+            }, 500);
+        }
+
+        function downloadTemplate() {
+            let wb = XLSX.utils.book_new();
+            let wsData = [
+                ["군 구분(Subgroup)", "측정데이터(Value)"],
+                [1, 10.1], [1, 10.2], [1, 9.8], [1, 10.5], [1, 9.9], 
+                [2, 10.0], [2, 10.3], [2, 9.7], [2, 10.1], [2, 10.1],
+                ["", "(본 행은 무시됨. 위 양식에 맞춰 데이터를 입력하세요)"]
+            ];
+            let ws = XLSX.utils.aoa_to_sheet(wsData);
+            XLSX.utils.book_append_sheet(wb, ws, "Data");
+            XLSX.writeFile(wb, "Data_Template.xlsx");
+        }
+
+        function downloadGuide() {
+            let m = document.getElementById('guideModal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+    </script>
+
+    <!-- Guide Modal -->
+    <div id="guideModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[80vh] flex flex-col overflow-hidden">
+            <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                <h2 class="text-xl font-bold text-primary flex items-center gap-2"><i class="fa-solid fa-book-open"></i> <span data-i18n="guide_title">공정능력 마스터 매뉴얼</span> <span class="text-xs ml-2 bg-blue-100 text-blue-800 px-2 py-0.5 rounded shadow-sm font-bold tracking-wider">v1.1</span></h2>
+                <button onclick="document.getElementById('guideModal').classList.replace('flex','hidden')" class="text-gray-400 hover:text-red-500 transition text-2xl">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 prose prose-blue max-w-none text-sm text-gray-700">
+                <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-3" data-i18n="guide_h1">1. 개요</h3>
+                <ul class="list-disc pl-5 mb-5 space-y-1">
+                    <li data-i18n="guide_d1"><b>Excel 방식:</b> 표본 표준편차 (STDEV.S) 함수를 기반으로 전체 장기적 산포를 분석하여 Pp, Ppk 값을 산출합니다.</li>
+                    <li data-i18n="guide_d2"><b>Minitab 방식:</b> d2 계수표(군내 변동)를 기반으로 부분군의 단기 잠재력을 분석하여 Cp, Cpk 값을 산출합니다.</li>
+                </ul>
+                <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-3" data-i18n="guide_h2">2. 사용방법</h3>
+                <ul class="list-decimal pl-5 mb-5 space-y-1">
+                    <li data-i18n="guide_d3"><b>규격 입력:</b> 상한(USL), 하한(LSL)을 입력합니다. (군 크기 n은 기본값=1이며 필요 시 수정)</li>
+                    <li data-i18n="guide_d4"><b>데이터 업로드:</b> 템플릿과 동일한 형태의 엑셀 파일(.xlsx)을 업로드합니다.</li>
+                    <li data-i18n="guide_d5"><b>분석 시작:</b> 파란색 [<span data-i18n="btn_analyze">분석 시작하기</span>] 버튼을 누르면 실시간 대시보드가 생성됩니다.</li>
+                    <li data-i18n="guide_d6"><b>리포트 다운로드:</b> 엑셀 리포트 버튼을 통해 결과를 출력할 수 있습니다.</li>
+                </ul>
+                <h3 class="text-lg font-bold text-gray-800 border-b pb-2 mb-3" data-i18n="guide_h3">3. 판정 기준</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-center mt-3">
+                    <div class="bg-green-50 p-3 rounded-lg border border-green-200"><span class="block font-bold text-green-700 text-lg mb-1" data-i18n="status_exc">우수</span> >= 1.67</div>
+                    <div class="bg-blue-50 p-3 rounded-lg border border-blue-200"><span class="block font-bold text-blue-700 text-lg mb-1" data-i18n="status_good">양호</span> >= 1.33</div>
+                    <div class="bg-yellow-50 p-3 rounded-lg border border-yellow-200"><span class="block font-bold text-yellow-700 text-lg mb-1" data-i18n="status_fair">보통</span> >= 1.00</div>
+                    <div class="bg-red-50 p-3 rounded-lg border border-red-200"><span class="block font-bold text-red-700 text-lg mb-1" data-i18n="status_poor">부족</span> &lt; 1.00</div>
+                </div>
+            </div>
+            <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
+                <button onclick="document.getElementById('guideModal').classList.replace('flex','hidden')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-bold transition" data-i18n="btn_close_modal">닫기</button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
