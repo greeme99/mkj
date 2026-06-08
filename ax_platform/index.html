@@ -397,41 +397,7 @@
             </div>
         </main>
 
-        <!-- Security Pledge Modal -->
-        <div id="security-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-bgDark/80 backdrop-blur-md">
-            <div class="w-full max-w-2xl glass rounded-3xl overflow-hidden animate-fade-in shadow-2xl shadow-primary/10">
-                <div class="p-8 space-y-6 text-center">
-                    <div class="w-20 h-20 bg-primary/20 rounded-3xl mx-auto flex items-center justify-center text-primary border border-primary/30">
-                        <i data-lucide="shield-alert" class="w-10 h-10"></i>
-                    </div>
-                    <div>
-                        <h3 class="text-3xl font-bold tracking-tight">AI 전환(AX) 보안 서약</h3>
-                        <p class="mt-2 text-textSecondary">안전한 기업 AI 생태계 조성을 위해 보안 규정 준수가 필요합니다.</p>
-                    </div>
-                    
-                    <div class="text-left space-y-4 p-6 bg-slate-800/50 rounded-2xl border border-slate-700/50 max-h-60 overflow-y-auto custom-scrollbar text-slate-300 text-sm">
-                        <p>1. 모든 AI 모델 사용 시 회사 기밀 정보 및 개인정보를 입력하지 않습니다.</p>
-                        <p>2. AI가 생성한 결과물은 반드시 본인의 검증을 거친 후 업무에 활용합니다.</p>
-                        <p>3. AI 활용 중 발생하는 보안 사고 및 의심 징후는 즉시 보안 관리자에게 보고합니다.</p>
-                        <p>4. 승인되지 않은 모델의 무단 사용 및 사외 유출을 엄격히 금지합니다.</p>
-                        <p>5. AI 결과물의 저작권 및 지적재산권 관련 규정을 준수합니다.</p>
-                        <p>6. 본 플랫폼을 통해 제공되는 모든 데이터와 리소스는 업무 외 목적으로 사용하지 않습니다.</p>
-                    </div>
-
-                    <div class="flex items-center gap-3 justify-center">
-                        <label class="flex items-center gap-3 cursor-pointer group">
-                            <input type="checkbox" id="pledge-check" class="w-5 h-5 rounded border-slate-700 bg-slate-800 text-primary focus:ring-primary/20">
-                            <span class="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">위 모든 보안 지침을 숙지하였으며, 이를 준수할 것을 서약합니다.</span>
-                        </label>
-                    </div>
-
-                    <div class="pt-4 flex gap-4">
-                        <button onclick="rejectPledge()" class="flex-1 py-4 px-6 rounded-2xl bg-slate-800 hover:bg-slate-700 font-semibold transition-all">거부</button>
-                        <button onclick="acceptPledge()" id="accept-btn" class="flex-1 py-4 px-6 rounded-2xl bg-primary hover:bg-primary/80 font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed" disabled>서약 및 시작하기</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Security Pledge Modal Bypassed -->
     </div>
 
     <!-- Template Edit Modal -->
@@ -1260,48 +1226,8 @@
         // Initialize Lucide Icons
         lucide.createIcons();
 
-        // Security Pledge Logic
-        try {
-            const pledgeCheck = document.getElementById('pledge-check');
-            const acceptBtn = document.getElementById('accept-btn');
-            const securityModal = document.getElementById('security-modal');
-
-            if (pledgeCheck && acceptBtn) {
-                pledgeCheck.addEventListener('change', (e) => {
-                    acceptBtn.disabled = !e.target.checked;
-                });
-                if (pledgeCheck.checked) acceptBtn.disabled = false;
-            }
-
-            window.acceptPledge = function() {
-                const check = document.getElementById('pledge-check');
-                const modal = document.getElementById('security-modal');
-                if (check && !check.checked) {
-                    alert('보안 수칙에 동의해주셔야 합니다.');
-                    return;
-                }
-                currentState.isPledged = true;
-                if (modal) {
-                    modal.classList.add('hidden');
-                    modal.classList.remove('flex');
-                }
-                localStorage.setItem('ax_pledge_accepted', 'true');
-                renderPage(currentState.currentPage || 'dashboard');
-                showToast('보안 서약이 완료되었습니다. 서비스를 시작합니다.', 'success');
-            };
-
-            window.rejectPledge = function() {
-                alert('보안 서약에 동의하셔야 서비스 이용이 가능합니다.');
-            };
-
-            if (localStorage.getItem('ax_pledge_accepted') === 'true') {
-                currentState.isPledged = true;
-                if (securityModal) {
-                    securityModal.classList.add('hidden');
-                    securityModal.classList.remove('flex');
-                }
-            }
-        } catch (e) { console.error("Security Init Error:", e); }
+        // Security Pledge Logic (Bypassed)
+        currentState.isPledged = true;
 
         // Routing Logic
         function openBoard(type) {
