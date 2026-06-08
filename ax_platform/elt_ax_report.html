@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AX Platform (이랜텍)</title>
+    <!-- Embedded Data for Standalone Export -->
+    <script id="embedded-data" type="application/json">{}</script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- SheetJS (Excel Parsing) -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <!-- html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        Chart.register(ChartDataLabels);
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: 'var(--accent)', 
+                        secondary: 'var(--bg-secondary)',
+                        accent: 'var(--accent)',
+                        bgDark: 'var(--bg-primary)',
+                        textPrimary: 'var(--text-primary)',
+                        textSecondary: 'var(--text-secondary)',
+                        borderDefault: 'var(--border-color)',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    borderRadius: {
+                        '3xl': '1.5rem',
+                        '4xl': '2rem',
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent: #7c3aed;
+            --glass-bg: rgba(30, 41, 59, 0.7);
+            --border-color: rgba(255, 255, 255, 0.1);
+            --page-bg: rgba(15, 23, 42, 0.3);
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #ffffff;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --accent: #2563EB;
+            --glass-bg: rgba(255, 255, 255, 0.95);
+            --border-color: #cbd5e1;  /* More visible border */
+            --page-bg: #FFFFFF;
+        }
+
+        [data-theme="blue-green"] {
+            --bg-primary: #FFFFFF;   /* 시안의 연한 그레이 배경 */
+            --bg-secondary: #ffffff;
+            --text-primary: #1E293B;
+            --text-secondary: #475569;
+            --accent: #4F9DA6;        /* 시안의 메인 블루그린(Teal) */
+            --glass-bg: rgba(255, 255, 255, 0.98);
+            --border-color: #cbd5e1;
+            --page-bg: #FFFFFF;
+        }
+
+        /* 블루그린 테마 전용 사이드바 & 컴포넌트 스타일 */
+        [data-theme="blue-green"] 
+        [data-theme="blue-green"] 
+        [data-theme="blue-green"] 
+        [data-theme="blue-green"] 
+        [data-theme="blue-green"] 
+        [data-theme="blue-green"] 
+        [data-theme="blue-green"] 
+        [data-theme="blue-green"] 
+        [data-theme="blue-green"] .glass {
+            background: #ffffff;
+            border-color: #e2e8f0;
+        }
+
+        /* Global Visibility Fixes (Strict Overrides) */
+        [data-theme="light"] .bg-slate-800, [data-theme="blue-green"] .bg-slate-800,
+        [data-theme="light"] .bg-slate-800\/50, [data-theme="blue-green"] .bg-slate-800\/50,
+        [data-theme="light"] .bg-slate-800\/30, [data-theme="blue-green"] .bg-slate-800\/30,
+        [data-theme="light"] .bg-slate-800\/20, [data-theme="blue-green"] .bg-slate-800\/20,
+        [data-theme="light"] .bg-slate-900, [data-theme="blue-green"] .bg-slate-900 { 
+            background-color: #f1f5f9 !important; 
+            color: #1e293b !important;
+            border: 1px solid var(--border-color) !important;
+        }
+
+        [data-theme="light"] .hover\:bg-slate-700:hover, [data-theme="blue-green"] .hover\:bg-slate-700:hover {
+            background-color: #e2e8f0 !important;
+        }
+
+        [data-theme="light"] input, [data-theme="blue-green"] input,
+        [data-theme="light"] select, [data-theme="blue-green"] select,
+        [data-theme="light"] textarea, [data-theme="blue-green"] textarea {
+            background-color: #ffffff !important;
+            color: #0f172a !important;
+            border: 1.5px solid var(--border-color) !important;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.05) !important;
+        }
+
+
+        /* Premium Top Bar Glassmorphism */
+        header {
+            background: rgba(255, 255, 255, 0.8) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+            z-index: 50;
+        }
+
+        [data-theme="dark"] header {
+            background: rgba(15, 23, 42, 0.8) !important;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+        }
+        
+        [data-theme="blue-green"] header {
+            background: rgba(255, 255, 255, 0.9) !important;
+            border-bottom: 1px solid rgba(79, 157, 166, 0.1) !important;
+        }
+
+        /* Enforce high contrast for sub-tags and info in light mode */
+        [data-theme="light"] .text-slate-500, [data-theme="blue-green"] .text-slate-500,
+        [data-theme="light"] .text-slate-600, [data-theme="blue-green"] .text-slate-600 {
+            color: #1e293b !important; /* Darker for better visibility */
+            font-weight: 500;
+        }
+
+        [data-theme="light"] .border-slate-800, [data-theme="light"] .border-slate-700,
+        [data-theme="blue-green"] .border-slate-800, [data-theme="blue-green"] .border-slate-700 {
+            border-color: var(--border-color) !important;
+        }
+
+        /* Enforce visibility on primary elements */
+        .bg-primary { 
+            background-color: var(--accent) !important;
+            color: #ffffff !important; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .text-primary { color: var(--accent) !important; }
+
+        /* Icon visibility in light mode */
+        [data-theme="light"] i, [data-theme="blue-green"] i {
+            stroke-width: 2.5px; /* Thicker icons for better visibility */
+        }
+
+        [data-theme="light"] 
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(124, 58, 237, 0.3);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(124, 58, 237, 0.5);
+        }
+        .sidebar-item:hover {
+            background: rgba(124, 58, 237, 0.15);
+            color: #c084fc;
+        }
+        .sidebar-item.active {
+            background: linear-gradient(to right, rgba(124, 58, 237, 0.2), transparent);
+            border-left: 4px solid #7c3aed;
+            color: #c084fc;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        /* Sidebar Toggle Styles */
+        
+        
+        
+        
+        
+
+        /* Custom Multi-select Dropdown */
+        .filter-dropdown { position: relative; }
+        .filter-dropdown-content {
+            display: none; position: absolute; top: 110%; left: 0;
+            background-color: var(--bg-secondary); backdrop-filter: blur(10px);
+            min-width: 200px; max-height: 300px; overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border-color); border-radius: 1rem; z-index: 1000; padding: 0.5rem;
+        }
+        .filter-dropdown-content.show { display: block; animation: dropdownFadeIn 0.2s ease-out; }
+        @keyframes dropdownFadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .filter-item {
+            display: flex; align-items: center; padding: 0.5rem 0.75rem; border-radius: 0.5rem;
+            cursor: pointer; transition: all 0.2s; font-size: 0.75rem; color: var(--text-secondary);
+        }
+        .filter-item:hover { background-color: rgba(255, 255, 255, 0.05); color: var(--text-primary); }
+        .filter-item.active { background-color: rgba(124, 58, 237, 0.1); color: var(--accent); font-weight: 700; }
+        .filter-item.filtered-out { display: none; }
+        .filter-checkbox { width: 14px; height: 14px; margin-right: 10px; accent-color: var(--accent); pointer-events: none; }
+    </style>
+</head>
+<body class="font-sans antialiased">
+    <div id="app" class="flex h-screen overflow-hidden">
+        <main class="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+            <header class="h-16 glass border-b border-slate-800 flex items-center justify-between px-6 z-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm shrink-0 overflow-hidden p-1 border border-slate-200">
+                        <img src="assets/ELT_Logo.png" alt="Elentec Logo" class="w-full h-auto object-contain">
+                    </div>
+                    <h2 id="page-title" class="text-lg font-bold tracking-tight">과제 진척 리포트</h2>
+                    <div class="px-2 py-1 bg-green-500/10 border border-green-500/20 rounded text-[10px] text-green-400 font-bold uppercase tracking-wider">System Live</div>
+                </div>
+                <div class="flex items-center gap-6">
+                    <div class="relative hidden sm:block">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500"></i>
+                        <input type="text" placeholder="Search resources..." class="pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-primary/50 transition-all w-64">
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <!-- Theme Switcher -->
+                        <div class="flex bg-slate-800/50 p-1 rounded-xl border border-slate-700/50">
+                            <button onclick="setTheme('light')" id="theme-light" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 transition-all text-textSecondary" title="Light Mode">
+                                <i data-lucide="sun" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="setTheme('blue-green')" id="theme-blue-green" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 transition-all text-textSecondary" title="Blue-Green Mode">
+                                <i data-lucide="palette" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="setTheme('dark')" id="theme-dark" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-700 transition-all text-textSecondary" title="Dark Mode">
+                                <i data-lucide="moon" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <button class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-800 transition-colors relative">
+                            <i data-lucide="bell" class="w-5 h-5"></i>
+                            <span class="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-bgDark"></span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+            <div id="page-container" style="background-color: var(--page-bg)" class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            </div>
+        </main>
+    </div>
+    
+    <div id="guide-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[200] hidden items-center justify-center p-4">
+        <div class="glass w-full max-w-4xl rounded-[2rem] border border-slate-300/20 shadow-2xl animate-fade-in flex flex-col overflow-hidden text-textPrimary">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-300/20 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-slate-500/10 rounded-2xl flex items-center justify-center border border-slate-300/20">
+                        <i data-lucide="book-open" class="w-6 h-6 text-blue-500"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold">과제 진척 리포트 활용 가이드</h2>
+                        <p class="text-sm text-textSecondary">리포트 지표 산출 기준 및 데이터 비교 방법 안내</p>
+                    </div>
+                </div>
+                <button onclick="closeGuideModal()" class="w-10 h-10 bg-slate-500/10 rounded-full flex items-center justify-center hover:bg-slate-500/20 transition-all text-textSecondary hover:text-textPrimary">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <!-- Body -->
+            <div class="flex h-[600px]">
+                <!-- Sidebar -->
+                <div class="w-64 border-r border-slate-300/20 p-4 space-y-2 bg-slate-500/5">
+                    <button onclick="document.getElementById('guide-sec-1').scrollIntoView({behavior: 'smooth'})" class="w-full text-left px-4 py-3 rounded-xl bg-blue-600 text-white font-bold flex items-center gap-3">
+                        <i data-lucide="layout-template" class="w-4 h-4"></i> 리포트 활용법
+                    </button>
+                    <button onclick="document.getElementById('guide-sec-2').scrollIntoView({behavior: 'smooth'})" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-500/10 text-textSecondary font-medium flex items-center gap-3 transition-colors">
+                        <i data-lucide="bar-chart-2" class="w-4 h-4"></i> 단계 및 KPI 정의
+                    </button>
+                    <button onclick="document.getElementById('guide-sec-3').scrollIntoView({behavior: 'smooth'})" class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-500/10 text-textSecondary font-medium flex items-center gap-3 transition-colors">
+                        <i data-lucide="book" class="w-4 h-4"></i> 리포트 용어사전
+                    </button>
+                </div>
+                
+                <!-- Main Content -->
+                <div class="flex-1 p-8 overflow-y-auto custom-scrollbar space-y-10 scroll-smooth">
+                    <div id="guide-sec-1" class="space-y-10">
+                    <!-- Section 1 -->
+                    <section class="space-y-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-1.5 h-6 bg-blue-500 rounded-full"></div>
+                            <h3 class="text-lg font-bold">주간 데이터 비교 분석</h3>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <!-- Card 1 -->
+                            <div class="p-6 rounded-2xl border border-slate-300/20 bg-slate-500/5 space-y-4">
+                                <div class="w-12 h-12 bg-slate-500/10 rounded-xl flex items-center justify-center border border-slate-300/20">
+                                    <i data-lucide="check-square" class="w-5 h-5 text-blue-500"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-base font-bold mb-2">비교 주차 선택 (Multi-Select)</h4>
+                                    <p class="text-sm text-textSecondary leading-relaxed">
+                                        상단의 '비교 주차 선택' 버튼을 클릭하여 분석하고자 하는 주차를 다중 선택할 수 있습니다. 선택된 모든 주차의 데이터가 차트에 실시간으로 로드됩니다.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Card 2 -->
+                            <div class="p-6 rounded-2xl border border-slate-300/20 bg-slate-500/5 space-y-4">
+                                <div class="w-12 h-12 bg-slate-500/10 rounded-xl flex items-center justify-center border border-slate-300/20">
+                                    <i data-lucide="palette" class="w-5 h-5 text-indigo-500"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-base font-bold mb-2">그래프 시각화 및 정렬 규칙</h4>
+                                    <p class="text-sm text-textSecondary leading-relaxed mb-4">
+                                        시간 흐름에 따른 진척도 변화를 명확히 구분하기 위해 다음과 같은 색상 규칙이 적용됩니다.
+                                    </p>
+                                    <div class="flex items-center gap-3">
+                                        <div class="px-3 py-1.5 rounded-lg border border-slate-300/20 bg-slate-500/10 flex items-center gap-2 text-xs text-textSecondary">
+                                            <div class="w-2.5 h-2.5 rounded-full bg-slate-400"></div> 과거 주차: 회색
+                                        </div>
+                                        <div class="px-3 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 flex items-center gap-2 text-xs text-blue-500 font-bold">
+                                            <div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div> 최신 주차: 보라(강조)
+                                        </div>
+                                    </div>
+                                </div>
+    <div id="toast-container" class="fixed bottom-8 right-8 z-[100] flex flex-col gap-4"></div>
+
+    <script>
+
+        let taskData = [];
+        let availableWids = [];
+        let selectedWid = '';
+        let compareWid = '';
+        let currentTop5Mode = 'best';
+        let progressChart = null;
+        let deptStageChart = null;
+        let activeFilters = { dept: [], manager: [], stage: [], stack: [], tool: [] };
+        
+        let reportTitle = "과제 진척 리포트";
+        let currentState = { theme: 'light' };
+
+        function showToast(message, type = 'info') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'fixed bottom-8 right-8 z-[100] flex flex-col gap-4';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            const colors = {
+                'success': 'bg-green-500/10 border-green-500/20 text-green-400',
+                'error': 'bg-red-500/10 border-red-500/20 text-red-400',
+                'info': 'bg-primary/10 border-primary/20 text-primary'
+            };
+            const icons = {
+                'success': 'check-circle',
+                'error': 'alert-circle',
+                'info': 'info'
+            };
+
+            toast.className = `glass ${colors[type]} px-6 py-4 rounded-2xl border flex items-center gap-3 shadow-2xl animate-fade-in`;
+            toast.innerHTML = `
+                <i data-lucide="${icons[type]}" class="w-5 h-5"></i>
+                <span class="text-sm font-bold">${message}</span>
+            `;
+            
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-x-full', 'transition-all', 'duration-500');
+                setTimeout(() => toast.remove(), 500);
+            }, 3000);
+        }
+
+        function initApp() {
+            setTheme(localStorage.getItem('ax_theme') || 'light');
+            
+            // Load Data from LocalStorage or Embedded Data
+            let allWeeklyData = {};
+            const embeddedNode = document.getElementById('embedded-data');
+            if (embeddedNode && embeddedNode.textContent.trim() !== '{}' && embeddedNode.textContent.trim() !== '') {
+                try {
+                    allWeeklyData = JSON.parse(embeddedNode.textContent);
+                    console.log('Loaded embedded standalone data.');
+                    // Optionally sync to localStorage for the user to edit later
+                    localStorage.setItem('ax_weekly_tasks', JSON.stringify(allWeeklyData));
+                } catch(e) {
+                    console.error('Failed to parse embedded data', e);
+                    allWeeklyData = JSON.parse(localStorage.getItem('ax_weekly_tasks') || '{}');
+                }
+            } else {
+                allWeeklyData = JSON.parse(localStorage.getItem('ax_weekly_tasks') || '{}');
+            }
+            
+            availableWids = Object.keys(allWeeklyData).filter(w => w !== 'W19' || (allWeeklyData[w] && allWeeklyData[w].length > 0)).sort((a, b) => b.localeCompare(a));
+            
+            if (availableWids.length > 0) {
+                selectedWid = availableWids[0]; // Latest
+                compareWid = availableWids.length > 1 ? availableWids[1] : availableWids[0];
+                taskData = allWeeklyData[selectedWid] || [];
+                
+                // Fetch prev data for comparison if needed
+                const prevData = allWeeklyData[compareWid] || [];
+                taskData = taskData.map(t => {
+                    const pt = prevData.find(p => p.과제명 === t.과제명 && p.부서명 === t.부서명);
+                    return {
+                        ...t,
+                        진척도_이전: pt ? pt.진척도 : (t.진척도_이전 || 0)
+                    };
+                });
+            }
+            
+            renderTasks();
+            lucide.createIcons();
+        }
+
+        document.addEventListener('DOMContentLoaded', initApp);
+
+function setTheme(theme) {
+            // Handle legacy 'white' theme requests if they come from old localStorage
+            if (theme === 'white') theme = 'light';
+            
+            currentState.theme = theme;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('ax_theme', theme);
+            
+            // Update UI
+            document.querySelectorAll('[id^="theme-"]').forEach(btn => {
+                btn.classList.remove('bg-primary', 'text-white');
+                btn.classList.add('text-textSecondary');
+            });
+            const activeBtn = document.getElementById(`theme-${theme}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-primary', 'text-white');
+                activeBtn.classList.remove('text-textSecondary');
+            }
+        }
+
+function switchWid(wid) {
+            if (!wid) return;
+            selectedWid = wid;
+            localStorage.setItem('ax_selected_wid', wid);
+            
+            const allWeeklyData = JSON.parse(localStorage.getItem('ax_weekly_tasks') || '{}');
+            taskData = allWeeklyData[selectedWid] || [];
+            const prevData = allWeeklyData[compareWid] || [];
+            taskData = taskData.map(t => {
+                const pt = prevData.find(p => p.과제명 === t.과제명 && p.부서명 === t.부서명);
+                return {
+                    ...t,
+                    진척도_이전: pt ? pt.진척도 : (t.진척도_이전 || 0)
+                };
+            });
+            renderTasks();
+
+        }
+
+function switchCompareWid(wid) {
+            if (!wid) return;
+            compareWid = wid;
+            localStorage.setItem('ax_compare_wid', wid);
+            
+            const allWeeklyData = JSON.parse(localStorage.getItem('ax_weekly_tasks') || '{}');
+            taskData = allWeeklyData[selectedWid] || [];
+            const prevData = allWeeklyData[compareWid] || [];
+            taskData = taskData.map(t => {
+                const pt = prevData.find(p => p.과제명 === t.과제명 && p.부서명 === t.부서명);
+                return {
+                    ...t,
+                    진척도_이전: pt ? pt.진척도 : (t.진척도_이전 || 0)
+                };
+            });
+            renderTasks();
+
+        }
+
+function toggleExportMenu() {
+            const menu = document.getElementById('export-menu');
+            if (menu) menu.classList.toggle('hidden');
+        }
+
+function exportToExcel() {
+            try {
+                showToast('Excel 리포트 생성 중...', 'info');
+                
+                // Get current filters
+                const activeFilters = {};
+                ['dept', 'manager', 'stage', 'stack', 'tool'].forEach(cat => {
+                    const dropdown = document.getElementById(`content-${cat}`);
+                    if (dropdown) {
+                        const selected = Array.from(dropdown.querySelectorAll('.filter-item.active span'))
+                            .map(s => s.innerText);
+                        if (!selected.includes('전체')) {
+                            activeFilters[cat] = selected;
+                        }
+                    }
+                });
+
+                // Filter raw taskData based on active filters
+                const filteredData = taskData.filter(t => {
+                    const matchDept = !activeFilters.dept || activeFilters.dept.includes(t.부서명);
+                    const matchManager = !activeFilters.manager || activeFilters.manager.includes(t.담당자);
+                    const matchStage = !activeFilters.stage || activeFilters.stage.includes(t.단계 || (parseFloat(t.진척도) === 100 ? '완료' : '계획'));
+                    const matchStack = !activeFilters.stack || activeFilters.stack.includes(t.Stack);
+                    const matchTool = !activeFilters.tool || activeFilters.tool.includes(t.개발Tool);
+                    return matchDept && matchManager && matchStage && matchStack && matchTool;
+                });
+
+                if (filteredData.length === 0) {
+                    showToast('내보낼 데이터가 없습니다.', 'warning');
+                    return;
+                }
+
+                // Date formatting helper: Serial -> YYYY.M.D
+                const excelDateToJS = (serial) => {
+                    if (!serial || isNaN(serial) || serial < 1000) return serial;
+                    const date = new Date(Math.round((serial - 25569) * 86400 * 1000));
+                    return `${date.getFullYear()}.${date.getMonth() + 1}.${date.getDate()}`;
+                };
+
+                const exportRows = filteredData.map(t => {
+                    const expectedDate = t.완료예정일정 || t.완료예정일자 || '';
+                    const isPlaceholder = (val) => val == 46192 || val == "46192";
+
+                    return {
+                        '부서명': t.부서명 || '',
+                        '담당자': t.담당자 || '',
+                        '과제명': t.과제명 || '',
+                        '완료예정일정': excelDateToJS(expectedDate),
+                        '구현방안확정': isPlaceholder(t.구현방안확정) ? '' : (t.구현방안확정 || ''),
+                        '테스트중': isPlaceholder(t.테스트중) ? '' : (t.테스트중 || ''),
+                        '검증': isPlaceholder(t.검증) ? '' : (t.검증 || ''),
+                        '현업파일럿': isPlaceholder(t.현업파일럿) ? '' : (t.현업파일럿 || ''),
+                        '완료': isPlaceholder(t.완료) ? '' : (t.완료 || ''),
+                        '단계': t.단계 || '',
+                        '진척도': t.진척도 || '',
+                        '진척도_이전': t.진척도_이전 || '',
+                        '개발Tool': t.개발Tool || '',
+                        'Stack': t.Stack || '',
+                        '비고': t.비고 || '',
+                        'wid': t.wid || selectedWid
+                    };
+                });
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(exportRows);
+                
+                // Set column widths for better readability
+                const wscols = [
+                    {wch: 15}, {wch: 10}, {wch: 40}, {wch: 15}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 12}, 
+                    {wch: 15}, {wch: 10}, {wch: 10}, {wch: 15}, {wch: 15}, {wch: 50}, {wch: 8}
+                ];
+                ws['!cols'] = wscols;
+
+                XLSX.utils.book_append_sheet(wb, ws, "과제상세현황");
+                XLSX.writeFile(wb, `AX_Report_Raw_${selectedWid || 'All'}.xlsx`);
+                
+                showToast('Excel 다운로드가 완료되었습니다.', 'success');
+            } catch (e) {
+                console.error("Excel Export Error:", e);
+                showToast('Excel 내보내기 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+async function exportToHTML() {
+            try {
+                showToast('단독 실행용 HTML 생성 중...', 'info');
+                
+                // Get current HTML
+                const currentHtml = document.documentElement.outerHTML;
+                
+                // Parse it to replace embedded data
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(currentHtml, 'text/html');
+                
+                // Fetch the latest data from localStorage
+                const allWeeklyData = JSON.parse(localStorage.getItem('ax_weekly_tasks') || '{}');
+                
+                // Inject into embedded-data tag
+                const scriptTag = doc.getElementById('embedded-data');
+                if (scriptTag) {
+                    scriptTag.textContent = JSON.stringify(allWeeklyData);
+                } else {
+                    console.error("embedded-data tag not found!");
+                }
+                
+                // Create Blob and trigger download
+                const blob = new Blob(['<!DOCTYPE html>\\n' + doc.documentElement.outerHTML], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `ax_report_shared_${new Date().toISOString().slice(0,10)}.html`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                showToast('공유용 HTML 다운로드가 완료되었습니다.', 'success');
+            } catch (error) {
+                console.error('Export HTML Error:', error);
+                showToast('HTML 내보내기 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+async function handlePDFExport() {
+            try {
+                showToast('PDF 리포트 생성 중...', 'info');
+                const element = document.getElementById('page-container');
+                const originalContent = element.innerHTML;
+                
+                // --- Prepare element for PDF ---
+                // 1. Hide unwanted elements
+                const excludes = element.querySelectorAll('[data-pdf-exclude]');
+                excludes.forEach(el => el.style.display = 'none');
+                
+                // 2. Temporarily show BOTH Top 5 and Worst 5
+                // We'll search for the Top 5 section and modify it
+                const top5Section = element.querySelector('.glass.p-8.rounded-\\[2\\.5rem\\]'); // Find the Top 5 section
+                if (top5Section) {
+                    const top5Title = top5Section.querySelector('h5');
+                    if (top5Title) top5Title.innerText = "진척률 성과 요약 (우수 5 / 저조 5)";
+                    
+                    // Hide the toggle buttons
+                    const toggleBtnContainer = top5Section.querySelector('.flex.bg-slate-900\\/50');
+                    if (toggleBtnContainer) toggleBtnContainer.style.display = 'none';
+                    
+                    // We need to re-render the cards to show BOTH. 
+                    // This is tricky because it's already rendered. 
+                    // Let's manually inject the missing 5.
+                    const cardsContainer = top5Section.querySelector('.flex.overflow-x-auto');
+                    if (cardsContainer) {
+                        // Current cards are already there. 
+                        // If current mode is 'best', we add 'worst'. If 'worst', we add 'best'.
+                        const otherMode = currentTop5Mode === 'best' ? 'worst' : 'best';
+                        const cleanDataForPDF = taskData.map(t => {
+                            const cur = parseFloat(t.진척도) || 0;
+                            const prev = parseFloat(t.진척도_이전) || 0;
+                            return { ...t, cur, prev, diff: cur - prev, displayManager: t.담당자 || '담당자' };
+                        });
+                        
+                        const otherData = [...cleanDataForPDF]
+                            .sort((a, b) => {
+                                if (otherMode === 'best') return (b.cur - b.prev) - (a.cur - a.prev);
+                                else return a.cur - b.cur;
+                            })
+                            .slice(0, 5)
+                            .map((t, idx) => {
+                                const diff = t.cur - t.prev;
+                                const isBest = otherMode === 'best';
+                                const cardBg = isBest ? '#DFF0F3' : '#F4D2DD';
+                                const curColor = isBest ? 'text-emerald-600' : 'text-slate-700';
+                                const diffColor = isBest ? 'text-blue-600' : 'text-rose-600';
+                                return `
+                                    <div class="p-6 rounded-2xl border border-white/20 relative overflow-hidden flex-shrink-0 w-80 shadow-lg" style="background-color: ${cardBg}; margin-right: 1rem;">
+                                        <div class="text-[10px] font-bold text-slate-500 mb-2 uppercase">RANK ${idx + 1} (${otherMode === 'best' ? '우수' : '저조'})</div>
+                                        <div class="text-sm font-bold text-slate-800 truncate mb-4">${t.과제명 || 'Untitled'}</div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div><div class="text-xl font-black ${curColor}">${t.cur}%</div><div class="text-[9px] text-slate-500 font-bold">진도율</div></div>
+                                            <div class="text-right"><div class="text-xl font-black ${diffColor}">${diff > 0 ? '↑ +' + diff + '%' : diff < 0 ? '↓ ' + diff + '%' : '-'}</div><div class="text-[9px] text-slate-500 font-bold">전주비</div></div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                        
+                        cardsContainer.innerHTML += otherData;
+                    }
+                }
+
+                const opt = {
+                    margin: 5,
+                    filename: `AX_Report_${selectedWid || 'Dashboard'}.pdf`,
+                    image: { type: 'jpeg', quality: 0.98 },
+                    html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+                    pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                };
+
+                await html2pdf().from(element).set(opt).save();
+                
+                // Restore original state
+                element.innerHTML = originalContent;
+                lucide.createIcons();
+                initReportCharts();
+                showToast('PDF 다운로드가 완료되었습니다.', 'success');
+            } catch (e) {
+                console.error("PDF Export Error:", e);
+                showToast('PDF 내보내기 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+async function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                console.log("📂 [Excel Upload] Workbook Sheets:", workbook.SheetNames);
+                let jsonData = [];
+                let sheetName = "";
+                // 데이터가 있는 첫 번째 시트 찾기
+                for (const name of workbook.SheetNames) {
+                    const sheet = workbook.Sheets[name];
+                    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    
+                    if (rows.length > 0) {
+                        // 헤더 행 찾기 (부서, 과제, 진척 등 키워드가 포함된 가장 빠른 행)
+                        let headerIdx = 0;
+                        for (let i = 0; i < Math.min(rows.length, 10); i++) {
+                            const rowStr = JSON.stringify(rows[i]);
+                            if (rowStr.includes("부서") || rowStr.includes("과제") || rowStr.includes("진척") || rowStr.includes("Task")) {
+                                headerIdx = i;
+                                break;
+                            }
+                        }
+                        
+                        // 해당 행을 헤더로 하여 다시 파싱
+                        jsonData = XLSX.utils.sheet_to_json(sheet, { range: headerIdx });
+                        sheetName = name;
+                        
+                        console.log(`📌 [Excel Header Detected] Sheet: ${name}, Row: ${headerIdx + 1}`);
+                        if (jsonData.length > 0) {
+                            console.log("📌 [First Row Keys]:", Object.keys(jsonData[0]));
+                            break;
+                        }
+                    }
+                }
+
+                if (jsonData.length > 0) {
+                    // 키값 정규화 (공백 제거 등)
+                    const normalizedData = jsonData.map(row => {
+                        const newRow = {};
+                        for (let key in row) {
+                            const normalizedKey = key.trim().replace(/\s+/g, '');
+                            newRow[normalizedKey] = row[key];
+                        }
+                        return newRow;
+                    });
+
+                    console.log("📊 [Excel Upload] Normalized Data Sample:", normalizedData[0]);
+
+                    const firstRow = normalizedData[0];
+                    // W-ID, WID 등 다양한 형태 지원
+                    const wid = firstRow['W-ID'] || firstRow['WID'] || firstRow['wid'] || '';
+                    
+                    if (wid) {
+                        reportTitle = `${wid} (${sheetName}) 과제 진척 리포트`;
+                    } else {
+                        reportTitle = `${sheetName} 과제 진척 리포트`;
+                    }
+
+                    // Map Excel columns to taskData structure
+                    let extractedWid = '';
+                    let lastDept = '';
+                    let lastManager = '';
+                    let lastRowWid = '';
+                    let lastTaskName = '';
+
+                    const mappedData = normalizedData.map((row, idx) => {
+                        const allKeys = Object.keys(row);
+                        const getVal = (keywords) => {
+                            // 1. Exact/Normalized match
+                            for (const k of keywords) {
+                                if (row[k] !== undefined && row[k] !== null && row[k] !== '') return row[k];
+                            }
+                            // 2. Fuzzy match
+                            for (const key of allKeys) {
+                                const cleanKey = key.trim().replace(/[^\w가-힣]/g, '');
+                                for (const kw of keywords) {
+                                    const cleanKw = kw.trim().replace(/[^\w가-힣]/g, '');
+                                    if (cleanKey.includes(cleanKw)) {
+                                        if (row[key] !== undefined && row[key] !== null && row[key] !== '') return row[key];
+                                    }
+                                }
+                            }
+                            return '';
+                        };
+
+                        const currentDept = getVal(['부서명', '부서', '팀명', '팀', '소속']);
+                        if (currentDept) lastDept = currentDept;
+                        
+                        const currentManager = getVal(['담당자', '담당', '담당자명', 'Owner', '성명']);
+                        if (currentManager) lastManager = currentManager;
+
+                        const rowWid = String(getVal(['W-ID', 'WID', '주차', 'wid'])).trim();
+                        if (rowWid) lastRowWid = rowWid;
+                        
+                        const currentTaskName = String(getVal(['과제명', '과제', '제목', 'Task', '프로젝트', 'TaskName'])).trim();
+                        if (currentTaskName) lastTaskName = currentTaskName;
+                        
+                        if (idx === 0 || !extractedWid) {
+                            extractedWid = lastRowWid;
+                        }
+
+                        const rawProgress = getVal(['진척률', '진척도', '진척', '전체진척율', 'Progress', '완료율', '이행율', '진척율']);
+                        let cleanProgress = '0';
+                        if (typeof rawProgress === 'number') {
+                            cleanProgress = (rawProgress <= 1 ? Math.round(rawProgress * 100) : rawProgress).toString();
+                        } else {
+                            cleanProgress = String(rawProgress).replace(/%/g, '').trim() || '0';
+                        }
+
+                        const rawPrevProgress = getVal(['이전진척도', 'W17진척도', '이전주차진척도', '지난주진척', '진척도_이전', '전주진척', '전주진척도', '전주진척율']);
+                        let cleanPrevProgress = cleanProgress;
+                        if (rawPrevProgress !== '' && rawPrevProgress !== undefined) {
+                            if (typeof rawPrevProgress === 'number') {
+                                cleanPrevProgress = (rawPrevProgress <= 1 ? Math.round(rawPrevProgress * 100) : rawPrevProgress).toString();
+                            } else {
+                                cleanPrevProgress = String(rawPrevProgress).replace(/%/g, '').trim() || '0';
+                            }
+                        }
+
+                        const rawBigo = String(getVal(['비고', '참고', 'Note', '특이사항'])).trim();
+                        let devTool = getVal(['개발 Tool', '개발Tool', 'Tool', '개발도구', '도구', 'Tool명']);
+                        let stack = getVal(['Stack', '스택', '기술스택', '사용기술']);
+
+                        // 비고 내부에 2. 개발Tool, 3. Stack 형식이 있을 경우 파싱 (하위 호환성)
+                        if ((!devTool || devTool === '-') && rawBigo.includes('2.')) {
+                            const parts = rawBigo.split(/[1-9]\./);
+                            if (parts[2]) devTool = parts[2].trim();
+                        }
+                        if ((!stack || stack === '-') && rawBigo.includes('3.')) {
+                            const parts = rawBigo.split(/[1-9]\./);
+                            if (parts[3]) stack = parts[3].trim();
+                        }
+
+                        const isChecked = (val) => {
+                            if (!val) return false;
+                            const s = String(val).toUpperCase().trim();
+                            // 'O', 'V', '0', '1', 'TRUE' 등을 체크마크로 인식
+                            return s === 'O' || s === 'V' || s === '0' || s === '1' || s === 'TRUE';
+                        };
+
+                        // 단계 파싱 (O 표시 확인)
+                        let detectedStage = getVal(['단계', '현단계', '상태', 'Status']);
+                        if (!detectedStage) {
+                            // 각 단계별 키워드 강화 (파일롯/파일럿, 개발/테스트 등)
+                            const v5 = getVal(['완료', 'Stage5']);
+                            const v4 = getVal(['현업 파일럿', '현업 파일롯', '현업파일럿', '현업파일롯', 'Pilot', 'Stage4']);
+                            const v3 = getVal(['기능 검증', '기능검증', '검증', 'Stage3']);
+                            const v2 = getVal(['개발/테스트', '개발테스트', '테스트', 'Stage2']);
+                            const v1 = getVal(['구현방안확정', '구현방안', 'Stage1']);
+
+                            if (isChecked(v5)) detectedStage = '완료';
+                            else if (isChecked(v4)) detectedStage = '현업파일럿';
+                            else if (isChecked(v3)) detectedStage = '검증';
+                            else if (isChecked(v2)) detectedStage = '개발/테스트';
+                            else if (isChecked(v1)) detectedStage = '구현방안확정';
+                        }
+
+                        return {
+                            isEmptyRow: !currentTaskName && rawProgress === undefined && !detectedStage && !rawBigo,
+                            부서명: lastDept,
+                            담당자: lastManager,
+                            과제명: lastTaskName,
+                            완료예정일정: getVal(['완료예정일정', '마감일', 'DueDate', '완료일']),
+                            구현방안확정: getVal(['구현방안확정', 'Stage1', '1단계']),
+                            테스트중: getVal(['개발/테스트', 'Stage2', '2단계']),
+                            검증: getVal(['기능 검증', '기능검증', '검증', 'Stage3', '3단계']),
+                            현업파일럿: getVal(['현업 파일럿', '현업파일럿', 'Pilot', 'Stage4', '4단계']),
+                            완료: getVal(['완료', 'Stage5', '5단계']),
+                            단계: detectedStage,
+                            진척도: cleanProgress + '%',
+                            진척도_이전: cleanPrevProgress + '%',
+                            개발Tool: devTool || '-',
+                            Stack: stack || '-',
+                            비고: rawBigo,
+                            wid: lastRowWid || extractedWid || wid
+                        };
+                    });
+
+                    // 유효한 과제 필터링
+                    taskData = mappedData.filter(t => t.과제명 && String(t.과제명).trim() !== '' && !t.isEmptyRow);
+                    const finalWid = extractedWid || wid || '';
+                    
+                    if (finalWid) {
+                        selectedWid = finalWid;
+                        reportTitle = `${finalWid} (${sheetName}) 과제 진척 리포트`;
+                    } else {
+                        reportTitle = `${sheetName} 과제 진척 리포트`;
+                    }
+
+                    console.log("✅ [Final TaskData Sample]:", taskData.slice(0, 3));
+                    await FirebaseManager.saveTaskData(finalWid || 'Default', taskData);
+                    
+                    showToast(`${taskData.length}개의 과제 데이터를 분석 중입니다...`, 'info');
+                    
+                    // 신규 주차 업로드시 최근 두개 주차 자동 선택
+                    await updateAvailableWids(true);
+                    saveTaskData();
+                    initDataSync();
+                    
+                    showToast('엑셀 데이터가 성공적으로 업로드되었습니다.', 'success');
+                    await switchWid(finalWid);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+function openGuideModal() {
+            const modal = document.getElementById('guide-modal');
+            if(modal) {
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                lucide.createIcons();
+            }
+        }
+
+function closeGuideModal() {
+            const modal = document.getElementById('guide-modal');
+            if(modal) {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }
+        }
+
+function switchTop5Mode(mode) {
+            currentTop5Mode = mode;
+            renderTasks();
+        }
+
+function renderTasks() {
+            const container = document.getElementById('page-container');
+            container.innerHTML = '';
+            
+            // Clean and prepare data once
+            const cleanData = taskData.map((t, idx) => {
+                const cur = parseFloat(t.진척도) || 0;
+                const prev = parseFloat(t.진척도_이전) || 0;
+                console.log('Task 진척도:', t.진척도, 'isDrop:', String(t.진척도).trim().toLowerCase() === 'drop');
+                const isDrop = String(t.진척도).replace(/%/g, '').trim().toLowerCase() === 'drop' || String(t.단계).trim().toLowerCase() === 'drop' || String(t.비고).trim().toLowerCase() === 'drop';
+                const isNew = String(t.비고).replace(/\s/g, '').toLowerCase().includes('신규') || String(t.단계).replace(/\s/g, '').toLowerCase().includes('신규');
+                const stage = isDrop ? 'Drop' : (t.단계 || (cur === 100 ? '완료' : cur >= 80 ? '현업파일럿' : cur >= 60 ? '검증' : cur >= 40 ? '개발/테스트' : cur >= 20 ? '구현방안확정' : cur === 0 ? '과제기획' : '과제기획'));
+                let displayManager = t.담당자 || '담당자';
+                return { ...t, cur, prev, diff: cur - prev, stage, displayManager };
+            });
+
+            const totalTasks = cleanData.length;
+            const completedTasks = cleanData.filter(t => t.stage === '완료').length;
+            const verificationTasks = cleanData.filter(t => t.stage === '검증' || t.stage === '현업파일럿').length;
+            const devTestTasks = cleanData.filter(t => t.stage === '개발/테스트').length;
+            const confirmedTasks = cleanData.filter(t => t.stage === '구현방안확정').length;
+
+            const avgProgress = totalTasks > 0 ? (cleanData.reduce((acc, curr) => acc + curr.cur, 0) / totalTasks).toFixed(1) : 0;
+            const prevAvgProgress = totalTasks > 0 ? (cleanData.reduce((acc, curr) => acc + curr.prev, 0) / totalTasks).toFixed(1) : 0;
+            const progressDiff = (parseFloat(avgProgress) - parseFloat(prevAvgProgress)).toFixed(1);
+
+            const sortedWids = [...availableWids].sort((a, b) => b.localeCompare(a));
+            const currentIndex = sortedWids.indexOf(selectedWid);
+            const prevLabel = compareWid || "이전 주차";
+            const currentLabel = selectedWid || "현재 주차";
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'space-y-8 animate-fade-in pb-20';
+            wrapper.innerHTML = `
+                <!-- Dashboard Header -->
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center gap-3 relative">
+                            <h3 class="text-3xl font-bold">${selectedWid ? selectedWid + ' 과제 진척 리포트' : reportTitle}</h3>
+                            
+                            <div class="relative ml-2">
+                                <button onclick="document.getElementById('compareDropdown').classList.toggle('hidden')" class="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-800 rounded-full px-4 py-1.5 text-sm font-bold shadow-sm transition-all flex items-center gap-2">
+                                    비교주차선택 <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                                </button>
+                                
+                                <div id="compareDropdown" class="hidden absolute top-full left-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50">
+                                    <h4 class="text-sm font-bold text-slate-800 mb-3 border-b border-slate-100 pb-2">주차 비교 설정</h4>
+                                    
+                                    <div class="flex flex-col gap-3">
+                                        <div>
+                                            <label class="text-xs font-bold text-slate-500 mb-1.5 block">기준 주차 (최신)</label>
+                                            <select onchange="switchWid(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23334155%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%226 9 12 15 18 9%22></polyline></svg>'); background-position: right 0.75rem center; background-size: 1em; background-repeat: no-repeat;">
+                                                <option value="">주차 선택</option>
+                                                ${availableWids.filter(w => w !== 'W19').map(w => `<option value="${w}" ${w === selectedWid ? 'selected' : ''}>${w}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                        
+                                        <div>
+                                            <label class="text-xs font-bold text-slate-500 mb-1.5 block">비교 주차 (과거)</label>
+                                            <select onchange="switchCompareWid(this.value)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer" style="background-image: url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%23334155%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><polyline points=%226 9 12 15 18 9%22></polyline></svg>'); background-position: right 0.75rem center; background-size: 1em; background-repeat: no-repeat;">
+                                                <option value="">주차 선택</option>
+                                                ${availableWids.filter(w => w !== 'W19').map(w => `<option value="${w}" ${w === compareWid ? 'selected' : ''}>${w}</option>`).join('')}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-4 pt-3 border-t border-slate-100 text-right">
+                                        <button onclick="document.getElementById('compareDropdown').classList.add('hidden')" class="text-xs font-bold text-slate-500 hover:text-slate-800">닫기</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-textSecondary text-sm">전사 AX 과제 이행 현황 및 주간 지표 분석 리포트</p>
+                    </div>
+                    <div class="flex gap-2 relative items-stretch" id="export-container">
+                        <label class="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-xs transition-all flex items-center gap-2 border border-slate-200 cursor-pointer shadow-sm" data-pdf-exclude>
+                            <i data-lucide="upload" class="w-4 h-4"></i> 엑셀 업로드
+                            <input type="file" accept=".xlsx, .xls" onchange="handleExcelUpload(event)" class="hidden">
+                        </label>
+                        <div class="relative group">
+                            <button onclick="toggleExportMenu()" class="h-full px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-bold text-xs transition-all flex items-center gap-2 border border-slate-200 shadow-sm" data-pdf-exclude>
+                                <i data-lucide="download" class="w-4 h-4"></i> 리포트 내보내기 (PDF/Excel)
+                            </button>
+                            <div id="export-menu" class="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl hidden z-50 overflow-hidden">
+                                <button onclick="exportToExcel(); toggleExportMenu()" class="w-full px-6 py-4 text-left hover:bg-slate-700 text-sm font-bold text-slate-300 flex items-center gap-3 transition-colors">
+                                    <i data-lucide="file-spreadsheet" class="w-4 h-4 text-green-500"></i> Excel로 내보내기
+                                </button>
+                                <div class="h-px bg-slate-700 mx-4"></div>
+                                <button onclick="handlePDFExport(); toggleExportMenu()" class="w-full px-6 py-4 text-left hover:bg-slate-700 text-sm font-bold text-slate-300 flex items-center gap-3 transition-colors">
+                                    <i data-lucide="file-type-2" class="w-4 h-4 text-red-500"></i> PDF로 내보내기
+                                </button>
+                                <div class="h-px bg-slate-700 mx-4"></div>
+                                <button onclick="exportToHTML(); toggleExportMenu()" class="w-full px-6 py-4 text-left hover:bg-slate-700 text-sm font-bold text-slate-300 flex items-center gap-3 transition-colors">
+                                    <i data-lucide="code" class="w-4 h-4 text-blue-500"></i> HTML로 내보내기 (데이터 포함)
+                                </button>
+                            </div>
+                        </div>
+                        <button onclick="openGuideModal()" class="px-3 py-2 flex items-center justify-center bg-white hover:bg-slate-50 text-slate-700 rounded-xl border border-slate-200 shadow-sm transition-all" data-pdf-exclude title="활용 가이드">
+                            <i data-lucide="help-circle" class="w-6 h-6"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- KPI Cards Section -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="glass p-8 rounded-[2rem] border-b-4 border-[#48bb78]">
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="text-[18px] text-blue-500 font-bold uppercase tracking-tight">진척률</p>
+                            <div class="p-2 bg-green-500/10 rounded-xl text-green-500">
+                                <i data-lucide="activity" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <h4 class="text-[18px] font-bold">${avgProgress}%</h4>
+                            <span class="text-[14px] font-bold ${progressDiff >= 0 ? 'text-green-500' : 'text-red-500'}">
+                                ${progressDiff >= 0 ? '↑' : '↓'} ${progressDiff >= 0 ? '+' : ''}${progressDiff}%p
+                            </span>
+                        </div>
+                        <p class="text-[13px] text-slate-600 mt-2 italic text-left">${prevLabel} 대비 ${progressDiff >= 0 ? '상승' : '하락'}</p>
+                    </div>
+                    <div class="glass p-8 rounded-[2rem] border-b-4 border-[#9f7aea]">
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="text-[18px] text-blue-500 font-bold uppercase tracking-tight">완료</p>
+                            <div class="p-2 bg-purple-500/10 rounded-xl text-purple-500">
+                                <i data-lucide="check-circle" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <h4 class="text-[18px] font-bold">${completedTasks}건</h4>
+                        </div>
+                        <p class="text-[13px] text-slate-600 mt-2 font-bold">전체 ${totalTasks}개 과제 중 ${totalTasks > 0 ? Math.round(completedTasks/totalTasks*100) : 0}%</p>
+                    </div>
+                    <div class="glass p-8 rounded-[2rem] border-b-4 border-[#4299e1]">
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="text-[18px] text-blue-500 font-bold uppercase tracking-tight">검증 & 파일럿</p>
+                            <div class="p-2 bg-blue-500/10 rounded-xl text-blue-500">
+                                <i data-lucide="search" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <h4 class="text-[18px] font-bold">${verificationTasks}건</h4>
+                        </div>
+                        <p class="text-[13px] text-slate-600 mt-2 font-bold">전체 ${totalTasks}개 과제 중 ${totalTasks > 0 ? Math.round(verificationTasks/totalTasks*100) : 0}%</p>
+                    </div>
+                    <div class="glass p-8 rounded-[2rem] border-b-4 border-[#60a5fa]">
+                        <div class="flex justify-between items-start mb-2">
+                            <p class="text-[18px] text-blue-500 font-bold uppercase tracking-tight">개발/테스트</p>
+                            <div class="p-2 bg-indigo-500/10 rounded-xl text-indigo-500">
+                                <i data-lucide="code" class="w-6 h-6"></i>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline gap-2">
+                            <h4 class="text-[18px] font-bold">${devTestTasks}건</h4>
+                        </div>
+                        <p class="text-[13px] text-slate-600 mt-2 font-bold">전체 ${totalTasks}개 과제 중 ${totalTasks > 0 ? Math.round(devTestTasks/totalTasks*100) : 0}%</p>
+                    </div>
+                </div>
+
+                <!-- Charts Grid - Stacked Vertically for larger view -->
+                <div class="grid grid-cols-1 gap-8">
+                    <div class="glass p-8 rounded-[2.5rem] border border-slate-800">
+                        <div class="flex justify-between items-start mb-6">
+                            <h5 class="text-[20px] font-bold flex items-center gap-2">
+                                <i data-lucide="bar-chart-2" class="w-5 h-5 text-primary"></i>
+                                진척률 비교 (${prevLabel} vs ${currentLabel})
+                            </h5>
+                            <div class="flex flex-col gap-2 items-end">
+                                <div id="drop-count-box" class="hidden border-2 border-[#BC8E03] text-[#BC8E03] font-bold px-4 py-2 rounded-xl text-sm" style="background-color: rgba(188, 142, 3, 0.1);">Drop 과제 0개</div>
+                                <div id="new-task-count-box" class="hidden border-2 border-green-500 text-green-500 font-bold px-4 py-2 rounded-xl text-sm" style="background-color: rgba(34, 197, 94, 0.1);">신규 과제 0개</div>
+                            </div>
+                        </div>
+                        <div class="h-72">
+                            <canvas id="progressComparisonChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="glass p-8 rounded-[2.5rem] border border-slate-800">
+                        <h5 class="text-[20px] font-bold mb-6 flex items-center gap-2">
+                            <i data-lucide="layers" class="w-5 h-5 text-accent"></i>
+                            부서별 단계 분포 (${currentLabel})
+                        </h5>
+                        <div class="h-72">
+                            <canvas id="deptStageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top 5 Progress -->
+                <div class="glass p-8 rounded-[2.5rem] border border-slate-800">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                        <h5 class="text-[20px] font-bold flex items-center gap-2">
+                            <i data-lucide="award" class="w-5 h-5 text-yellow-500"></i>
+                            ${currentTop5Mode === 'best' ? `진척율 우수 (${prevLabel} vs ${currentLabel})` : `진척율 저조 (${prevLabel} vs ${currentLabel})`}
+                        </h5>
+                        <div class="flex bg-slate-900/50 p-1 rounded-xl border border-slate-800">
+                            <button onclick="switchTop5Mode('best')" class="px-4 py-2 rounded-lg text-[12px] font-bold transition-all ${currentTop5Mode === 'best' ? 'bg-primary text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}">
+                                우수 5
+                            </button>
+                            <button onclick="switchTop5Mode('worst')" class="px-4 py-2 rounded-lg text-[12px] font-bold transition-all ${currentTop5Mode === 'worst' ? 'bg-orange-500 text-white shadow-lg' : 'text-slate-500 hover:text-slate-300'}">
+                                저조 5
+                            </button>
+                        </div>
+                    </div>
+                    <div class="flex overflow-x-auto gap-4 custom-scrollbar pb-4 -mx-2 px-2">
+                        ${[...cleanData]
+                            .sort((a, b) => {
+                                if (currentTop5Mode === 'best') {
+                                    return (b.cur - b.prev) - (a.cur - a.prev);
+                                } else {
+                                    return a.cur - b.cur;
+                                }
+                            })
+                            .slice(0, 5)
+                            .map((t, idx) => {
+                                const diff = t.cur - t.prev;
+                                const isBest = currentTop5Mode === 'best';
+                                const cardBg = isBest ? '#DFF0F3' : '#F4D2DD';
+                                const curColor = isBest ? 'text-emerald-600' : 'text-slate-700';
+                                const diffColor = isBest ? 'text-blue-600' : 'text-rose-600';
+                                
+                                return `
+                                    <div class="p-6 rounded-2xl border border-white/20 relative overflow-hidden group transition-all shadow-lg flex-shrink-0 w-80" style="background-color: ${cardBg}">
+                                        <div class="absolute top-2 right-2 ${isBest ? 'text-blue-500/10' : 'text-red-500/10'}">
+                                            <i data-lucide="${isBest ? 'award' : 'alert-triangle'}" class="w-10 h-10"></i>
+                                        </div>
+                                        <div class="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">RANK ${idx + 1}</div>
+                                        <div class="text-sm font-bold text-slate-800 truncate mb-4">${t.과제명 || 'Untitled'}</div>
+                                        
+                                        <div class="grid grid-cols-2 gap-2 mb-4">
+                                            <div>
+                                                <div class="text-2xl font-black ${curColor}">${t.cur}%</div>
+                                                <div class="text-[10px] text-slate-500 font-bold mt-1">현재 진도율</div>
+                                            </div>
+                                            <div class="text-right">
+                                                <div class="text-2xl font-black ${diffColor}">${diff > 0 ? '↑ +' + diff + '%' : diff < 0 ? '↓ ' + diff + '%' : '-'}</div>
+                                                <div class="text-[10px] text-slate-500 font-bold mt-1">${prevLabel} 대비 진척율</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="text-[10px] text-slate-600 font-bold flex items-center gap-1">
+                                            <i data-lucide="user" class="w-3 h-3 opacity-50"></i>
+                                            ${t.부서명 || 'N/A'} / ${t.displayManager}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                    </div>
+                </div>
+
+                <!-- Detail Data Table -->
+                <div class="glass rounded-[2.5rem] border border-slate-800 overflow-hidden shadow-2xl">
+                    <div class="p-8 border-b border-slate-200 bg-[#F8FAFC] flex flex-col md:flex-row justify-between items-end gap-6">
+                        <div class="flex-shrink-0 mb-4 md:mb-0">
+                            <h5 class="text-xl font-bold text-slate-800">과제 상세 현황</h5>
+                        </div>
+                        <div class="flex flex-wrap items-end gap-4">
+                            <!-- Custom Multi-select Dropdowns -->
+                            ${renderFilterDropdown('dept', '부서', [...new Set(cleanData.map(t => t.부서명))].filter(Boolean).sort())}
+                            ${renderFilterDropdown('manager', '담당자', [...new Set(cleanData.map(t => t.displayManager))].filter(Boolean).sort())}
+                            ${renderFilterDropdown('stage', '단계', [...new Set(cleanData.map(t => t.stage))].filter(Boolean).sort())}
+                            ${renderFilterDropdown('stack', 'Stack', [...new Set(cleanData.map(t => t.Stack))].filter(s => s && s !== '-').sort())}
+                            ${renderFilterDropdown('tool', 'Tool', [...new Set(cleanData.map(t => t.개발Tool))].filter(s => s && s !== '-').sort())}
+
+                            <div class="flex items-center gap-4">
+                                <button onclick="resetFilters()" class="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/20 flex items-center gap-2">
+                                    <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                                    초기화
+                                </button>
+                                <div class="text-xs text-slate-400 font-medium whitespace-nowrap">
+                                    Total <span id="filtered-count" class="text-blue-500 font-bold">${totalTasks}</span> items
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Top Scrollbar -->
+                    <div id="top-scroll-container" class="bg-slate-900/50 border-b border-slate-800 overflow-x-auto h-2 w-full custom-scrollbar" onscroll="const table = document.getElementById('table-scroll-container'); if(table) table.scrollLeft = this.scrollLeft">
+                        <div style="height: 1px; width: 1600px;"></div>
+                    </div>
+
+                    <div class="overflow-x-auto custom-scrollbar" id="table-scroll-container" onscroll="const topScroll = document.getElementById('top-scroll-container'); if(topScroll) topScroll.scrollLeft = this.scrollLeft">
+                        <table class="w-full text-left border-collapse min-w-[1600px]">
+                            <thead>
+                                <tr class="bg-[#F8FAFC] text-[13px] font-bold text-[#000080] uppercase tracking-widest border-b border-slate-300">
+                                    <th class="px-6 py-5 whitespace-nowrap">W-ID</th>
+                                    <th class="px-6 py-5">#</th>
+                                    <th class="px-6 py-5 whitespace-nowrap text-center">부서</th>
+                                    <th class="px-6 py-5 whitespace-nowrap text-center">담당자</th>
+                                    <th class="px-6 py-5 whitespace-nowrap text-center">과제명</th>
+                                    <th class="px-6 py-5">단계</th>
+                                    <th class="px-6 py-5">진척도 (${prevLabel})</th>
+                                    <th class="px-6 py-5">진척도 (${currentLabel})</th>
+                                    <th class="px-6 py-5 text-center">증감</th>
+                                    <th class="px-6 py-5">개발Tool</th>
+                                    <th class="px-6 py-5">Stack</th>
+                                    <th class="px-6 py-5">비고</th>
+                                </tr>
+                            </thead>
+                            <tbody id="task-table-body">
+                                ${renderTableRows(cleanData)}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            container.appendChild(wrapper);
+            lucide.createIcons();
+            initReportCharts();
+        }
+
+function renderTableRows(data) {
+            return data.map((t, idx) => {
+                const cur = t.cur || parseFloat(t.진척도) || 0;
+                const prev = t.prev || parseFloat(t.진척도_이전) || 0;
+                const diff = cur - prev;
+                const stage = t.stage || (cur === 100 ? '완료' : cur >= 80 ? '현업파일럿' : cur >= 60 ? '검증' : cur >= 40 ? '개발/테스트' : cur >= 20 ? '구현방안확정' : cur === 0 ? '과제기획' : '계획');
+                const displayManager = t.담당자 || '담당자';
+                
+                let stageClass = 'bg-slate-800 text-slate-400';
+                if (stage === '완료') stageClass = 'bg-green-100 text-green-700 font-bold';
+                else if (stage === '현업파일럿') stageClass = 'bg-purple-100 text-purple-700 font-bold';
+                else if (stage === '검증') stageClass = 'bg-blue-100 text-blue-700 font-bold';
+                else if (stage === '개발/테스트' || stage === '테스트') stageClass = 'bg-indigo-100 text-indigo-700 font-bold';
+                else if (stage === '구현방안확정') stageClass = 'bg-orange-100 text-orange-700 font-bold';
+                else if (stage === '과제기획') stageClass = 'bg-slate-100 text-slate-600 font-bold';
+
+                return `
+                    <tr class="hover:bg-slate-800/30 transition-colors group task-row border-b border-slate-800/50 whitespace-nowrap" 
+                        data-dept="${t.부서명 || ''}" 
+                        data-manager="${displayManager || ''}"
+                        data-stage="${stage || ''}"
+                        data-stack="${t.Stack || ''}"
+                        data-tool="${t.개발Tool || ''}"
+                        data-wid="${t.wid || ''}">
+                        <td class="px-6 py-5 text-sm font-medium text-textPrimary whitespace-nowrap overflow-hidden">${t.wid || '-'}</td>
+                        <td class="px-6 py-5 text-sm font-medium text-textPrimary whitespace-nowrap overflow-hidden">${idx + 1}</td>
+                        <td class="px-6 py-5 whitespace-nowrap overflow-hidden"><span class="px-3 py-1 bg-slate-800 rounded-lg font-bold text-[12px] whitespace-nowrap inline-block text-slate-300">${t.부서명 || 'N/A'}</span></td>
+                        <td class="px-6 py-5 whitespace-nowrap overflow-hidden">
+                            <div class="flex items-center gap-2 whitespace-nowrap flex-nowrap">
+                                <span class="text-sm font-medium text-textPrimary whitespace-nowrap">${displayManager}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 text-sm font-medium text-textPrimary group-hover:text-primary transition-colors whitespace-nowrap overflow-hidden">${t.과제명 || 'Untitled'}</td>
+                        <td class="px-6 py-5 whitespace-nowrap overflow-hidden">
+                            <span class="px-3 py-1 rounded-lg text-[12px] font-bold ${stageClass} whitespace-nowrap inline-block">${stage}</span>
+                        </td>
+                        <td class="px-6 py-5 whitespace-nowrap">
+                            <div class="flex items-center gap-3 whitespace-nowrap flex-nowrap">
+                                <div class="flex-1 h-2.5 bg-slate-200 rounded-full overflow-hidden min-w-[80px] flex-shrink-0">
+                                    <div class="h-full bg-slate-500" style="width: ${prev}%"></div>
+                                </div>
+                                <span class="text-[12px] text-slate-500 w-10 text-right font-bold whitespace-nowrap">${prev}%</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 whitespace-nowrap">
+                            <div class="flex items-center gap-3 whitespace-nowrap flex-nowrap">
+                                <div class="flex-1 h-2.5 bg-slate-200 rounded-full overflow-hidden min-w-[80px] flex-shrink-0">
+                                    <div class="h-full bg-blue-600" style="width: ${cur}%"></div>
+                                </div>
+                                <span class="font-bold w-10 text-right text-[12px] text-textPrimary whitespace-nowrap">${cur}%</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-5 text-center whitespace-nowrap">
+                            <span class="font-bold text-[13px] ${diff > 0 ? 'text-green-600' : diff < 0 ? 'text-red-500' : 'text-slate-400'} whitespace-nowrap">
+                                ${diff > 0 ? '↑ +' + diff + '%' : diff < 0 ? '↓ ' + diff + '%' : '-'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-5 text-sm text-textPrimary font-medium whitespace-nowrap overflow-hidden">${t.개발Tool || '-'}</td>
+                        <td class="px-6 py-5 text-sm text-textPrimary font-medium whitespace-nowrap overflow-hidden">${t.Stack || '-'}</td>
+                        <td class="px-6 py-5 whitespace-nowrap overflow-hidden">
+                            <div class="text-[11px] text-slate-500 truncate max-w-[400px] italic whitespace-nowrap">${t.비고 || '-'}</div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+function renderFilterDropdown(id, label, options) {
+            return `
+                <div class="flex flex-col gap-2">
+                    <label class="text-[12px] font-bold text-slate-500 ml-1">${label}</label>
+                    <div class="filter-dropdown" id="dropdown-${id}">
+                        <button onclick="toggleFilterDropdown('${id}')" class="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer flex items-center gap-3 min-w-[140px] justify-between shadow-sm hover:border-slate-300 transition-all">
+                            <span id="label-${id}">전체</span>
+                            <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-slate-400"></i>
+                        </button>
+                        <div class="filter-dropdown-content custom-scrollbar" id="content-${id}">
+                            <div class="filter-item active" onclick="toggleFilterItem(event, '${id}', 'all')">
+                                <input type="checkbox" class="filter-checkbox" checked>
+                                <span>전체</span>
+                            </div>
+                            ${options.map(opt => `
+                                <div class="filter-item" onclick="toggleFilterItem(event, '${id}', '${opt.replace(/'/g, "\\'")}')">
+                                    <input type="checkbox" class="filter-checkbox">
+                                    <span>${opt}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+function toggleFilterDropdown(id) {
+            const content = document.getElementById(`content-${id}`);
+            
+            // Close other dropdowns
+            document.querySelectorAll('.filter-dropdown-content').forEach(el => {
+                if (el.id !== `content-${id}`) el.classList.remove('show');
+            });
+
+            content.classList.toggle('show');
+        }
+
+
+
+function resetFilters() {
+            ['dept', 'manager', 'stage', 'stack', 'tool'].forEach(id => {
+                const content = document.getElementById(`content-${id}`);
+                if (!content) return;
+                const allItem = content.querySelector('.filter-item:first-child');
+                const allCheck = allItem.querySelector('.filter-checkbox');
+                const otherItems = content.querySelectorAll('.filter-item:not(:first-child)');
+                
+                allCheck.checked = true;
+                allItem.classList.add('active');
+                otherItems.forEach(item => {
+                    item.querySelector('.filter-checkbox').checked = false;
+                    item.classList.remove('active');
+                });
+                updateFilterLabel(id);
+            });
+            filterTaskTable();
+        }
+
+function initReportCharts() {
+            const sortedWids = [...availableWids].sort((a, b) => b.localeCompare(a, undefined, {numeric: true}));
+            const currentIndex = sortedWids.indexOf(selectedWid);
+            const prevLabel = compareWid || "이전 주차";
+            const currentLabel = selectedWid || "현재 주차";
+
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#94a3b8', font: { size: 16, weight: '600' }, usePointStyle: true, padding: 15 }
+                    },
+                    datalabels: {
+                        display: true,
+                        color: '#64748b',
+                        font: { size: 14, weight: 'bold' },
+                        formatter: (val) => val > 0 ? val : ''
+                    }
+                },
+                scales: {
+                    y: { display: false },
+                    x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 15 } } }
+                }
+            };
+
+            // 1. Progress Comparison Chart (Dynamic)
+            const stagesForComp = ['과제기획', '구현방안확정', '개발/테스트', '검증', '현업파일럿', '완료'];
+            // Use same cleaning logic for consistency
+            const chartCleanData = taskData.map(t => {
+                const cur = parseInt(t.진척도) || 0;
+                const prev = parseInt(t.진척도_이전) || 0;
+                console.log('Task 진척도:', t.진척도, 'isDrop:', String(t.진척도).trim().toLowerCase() === 'drop');
+                const isDrop = String(t.진척도).replace(/%/g, '').trim().toLowerCase() === 'drop' || String(t.단계).trim().toLowerCase() === 'drop' || String(t.비고).trim().toLowerCase() === 'drop';
+                const isNew = String(t.비고).replace(/\s/g, '').toLowerCase().includes('신규') || String(t.단계).replace(/\s/g, '').toLowerCase().includes('신규');
+                const isPrevDrop = String(t.진척도_이전).replace(/%/g, '').trim().toLowerCase() === 'drop'; // Only check previous progress
+                const mapStage = (v) => (v === 100 ? '완료' : v >= 80 ? '현업파일럿' : v >= 60 ? '검증' : v >= 40 ? '개발/테스트' : v >= 20 ? '구현방안확정' : v === 0 ? '과제기획' : '과제기획');
+                const curStage = isDrop ? 'Drop' : (t.단계 === '테스트' ? '개발/테스트' : (t.단계 || mapStage(cur)));
+                const prevStage = isPrevDrop ? 'Drop' : mapStage(prev);
+                return { curStage, prevStage, isDrop, isNew };
+            });
+
+            const compDataCurrent = stagesForComp.map(s => chartCleanData.filter(t => t.curStage === s).length);
+            const compDataPrev = stagesForComp.map(s => chartCleanData.filter(t => t.prevStage === s).length);
+            
+            const dropCount = chartCleanData.filter(t => t.isDrop).length;
+            const dropBox = document.getElementById('drop-count-box');
+            if (dropBox) {
+                if (dropCount > 0) {
+                    dropBox.innerText = `Drop 과제 ${dropCount}개`;
+                    dropBox.classList.remove('hidden');
+                } else {
+                    dropBox.classList.add('hidden');
+                }
+            }
+
+            const newCount = chartCleanData.filter(t => t.isNew).length;
+            const newBox = document.getElementById('new-task-count-box');
+            if (newBox) {
+                if (newCount > 0) {
+                    newBox.innerText = `신규 과제 ${newCount}개`;
+                    newBox.classList.remove('hidden');
+                } else {
+                    newBox.classList.add('hidden');
+                }
+            }
+
+            const comparisonCanvas = document.getElementById('progressComparisonChart');
+            if (comparisonCanvas) {
+                const comparisonCtx = comparisonCanvas.getContext('2d');
+                new Chart(comparisonCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: stagesForComp,
+                        datasets: [
+                            { 
+                                label: prevLabel, 
+                                data: compDataPrev, 
+                                backgroundColor: 'rgba(148, 163, 184, 0.3)', 
+                                borderRadius: 8,
+                                datalabels: { align: 'center', anchor: 'center', color: '#475569' }
+                            },
+                            { 
+                                label: currentLabel, 
+                                data: compDataCurrent, 
+                                backgroundColor: '#4285F4', 
+                                borderRadius: 8,
+                                datalabels: { align: 'center', anchor: 'center', color: '#FFFFFF' }
+                            }
+                        ]
+                    },
+                    options: chartOptions
+                });
+            }
+
+            // 2. Dept Stage Distribution
+            const deptStageData = {};
+            // Use same cleaning logic for charts
+            const processedData = taskData.map(t => {
+                const cur = parseInt(t.진척도) || 0;
+                console.log('Task 진척도:', t.진척도, 'isDrop:', String(t.진척도).trim().toLowerCase() === 'drop');
+                const isDrop = String(t.진척도).replace(/%/g, '').trim().toLowerCase() === 'drop' || String(t.단계).trim().toLowerCase() === 'drop' || String(t.비고).trim().toLowerCase() === 'drop';
+                const isNew = String(t.비고).replace(/\s/g, '').toLowerCase().includes('신규') || String(t.단계).replace(/\s/g, '').toLowerCase().includes('신규');
+                const stage = isDrop ? 'Drop' : (t.단계 || (cur === 100 ? '완료' : cur >= 80 ? '현업파일럿' : cur >= 60 ? '검증' : cur >= 40 ? '개발/테스트' : cur >= 20 ? '구현방안확정' : cur === 0 ? '과제기획' : '과제기획'));
+                return { ...t, cur, stage };
+            });
+
+            processedData.forEach(item => {
+                const dept = item.부서명 || 'N/A';
+                const stage = item.stage === '테스트' ? '개발/테스트' : (item.stage || '계획');
+                
+                if (!deptStageData[dept]) deptStageData[dept] = { '과제기획': 0, '구현방안확정': 0, '개발/테스트': 0, '검증': 0, '현업파일럿': 0, '완료': 0, 'Drop': 0 };
+                                                if (deptStageData[dept][stage] !== undefined) {
+                    deptStageData[dept][stage]++;
+                } else {
+                    deptStageData[dept]['과제기획']++;
+                }
+            });
+            const deptLabels = Object.keys(deptStageData).sort();
+
+            const deptStageCanvas = document.getElementById('deptStageChart');
+            if (deptStageCanvas) {
+                const deptStageCtx = deptStageCanvas.getContext('2d');
+                new Chart(deptStageCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: deptLabels,
+                        datasets: [
+                            
+                            { label: 'Drop', data: deptLabels.map(d => deptStageData[d]['Drop']), backgroundColor: '#808080', borderRadius: 4, stack: 'stack0', datalabels: { color: '#fff', font: { size: 14 } } },
+                            { label: '과제기획', data: deptLabels.map(d => deptStageData[d]['과제기획']), backgroundColor: '#F4F4F4', borderRadius: 4, stack: 'stack0', datalabels: { color: '#475569', font: { size: 14, weight: 'bold' } } },
+                            { label: '구현방안확정', data: deptLabels.map(d => deptStageData[d]['구현방안확정']), backgroundColor: '#ed8936', borderRadius: 4, stack: 'stack0', datalabels: { color: '#fff', font: { size: 14 } } },
+                            { label: '개발/테스트', data: deptLabels.map(d => deptStageData[d]['개발/테스트']), backgroundColor: '#60a5fa', borderRadius: 4, stack: 'stack0', datalabels: { color: '#fff', font: { size: 14 } } },
+                            { label: '검증', data: deptLabels.map(d => deptStageData[d]['검증']), backgroundColor: '#3b82f6', borderRadius: 4, stack: 'stack0', datalabels: { color: '#fff', font: { size: 14 } } },
+                            { label: '현업파일럿', data: deptLabels.map(d => deptStageData[d]['현업파일럿']), backgroundColor: '#a78bfa', borderRadius: 4, stack: 'stack0', datalabels: { color: '#fff', font: { size: 14 } } },
+                            { label: '완료', data: deptLabels.map(d => deptStageData[d]['완료']), backgroundColor: '#48bb78', borderRadius: 4, stack: 'stack0', datalabels: { color: '#fff', font: { size: 14 } } }
+                        ]
+                    },
+                    options: { 
+                        ...chartOptions, 
+                        plugins: {
+                            ...chartOptions.plugins,
+                            datalabels: {
+                                ...chartOptions.plugins.datalabels,
+                                align: 'center',
+                                anchor: 'center',
+                                formatter: (val) => val > 0 ? val : ''
+                            }
+                        },
+                        scales: { 
+                            y: { display: false, stacked: true }, 
+                            x: { ...chartOptions.scales.x, stacked: true } 
+                        } 
+                    }
+                });
+            }
+
+            // 3. Dept Comprehensive Chart
+            const deptStats = {};
+            processedData.forEach(item => {
+                const dept = item.부서명 || 'N/A';
+                const cur = item.cur;
+                const prev = parseInt(item.진척도_이전) || 0;
+                if (!deptStats[dept]) deptStats[dept] = { count: 0, sum45: 0, sum44: 0 };
+                deptStats[dept].count++;
+                deptStats[dept].sum45 += cur;
+                deptStats[dept].sum44 += prev;
+            });
+            const dLabels = Object.keys(deptStats);
+
+            const deptCtx = document.getElementById('deptChart').getContext('2d');
+            new Chart(deptCtx, {
+                data: {
+                    labels: dLabels,
+                    datasets: [
+                        { type: 'bar', label: '과제 수', data: dLabels.map(d => deptStats[d].count), backgroundColor: 'rgba(124, 58, 237, 0.2)', borderRadius: 6, yAxisID: 'y' },
+                        { type: 'line', label: `${currentLabel} 진척도 (%)`, data: dLabels.map(d => Math.round(deptStats[d].sum45 / deptStats[d].count)), borderColor: '#7c3aed', borderWidth: 3, tension: 0.4, yAxisID: 'y1', pointRadius: 4, pointBackgroundColor: '#7c3aed' },
+                        { type: 'line', label: `${prevLabel} 진척도 (%)`, data: dLabels.map(d => Math.round(deptStats[d].sum44 / deptStats[d].count)), borderColor: '#94a3b8', borderWidth: 2, borderDash: [5, 5], tension: 0.4, yAxisID: 'y1', pointRadius: 0 }
+                    ]
+                },
+                options: {
+                    ...chartOptions,
+                    scales: {
+                        y: { type: 'linear', position: 'left', max: 5, grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b' } },
+                        y1: { type: 'linear', position: 'right', max: 100, grid: { display: false }, ticks: { color: '#64748b' } },
+                        x: { grid: { display: false }, ticks: { color: '#64748b' } }
+                    }
+                }
+            });
+        }
+
+
+
+
+
+
+    </script>
+</body>
+</html>
